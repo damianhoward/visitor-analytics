@@ -172,7 +172,7 @@ table.data {
 
 table.data th,
 table.data td {
-  padding: 5px 12px;
+  padding: 5px 10px;
   text-align: left;
   white-space: nowrap;
   border-bottom: 1px solid var(--rule);
@@ -191,6 +191,13 @@ table.data td {
 
 table.data td.dim {
   color: var(--ink-4);
+}
+
+/* Free-form values (URLs, org names, paths) may not widen the table; hover shows the rest. */
+table.data td.trunc {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 table.data tr:last-child td {

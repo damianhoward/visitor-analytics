@@ -10,6 +10,14 @@ const cell = (text, cls) => {
   return td;
 };
 
+// Long free-form values (URLs, org names, paths) are ellipsis-truncated so they can never
+// force the table wider than its panel; the full value stays available on hover.
+const truncCell = (text, cls) => {
+  const td = cell(text, cls ? `${cls} trunc` : "trunc");
+  td.title = text;
+  return td;
+};
+
 function renderVisits(visits) {
   const body = document.querySelector("#visits tbody");
   body.replaceChildren();
@@ -18,16 +26,16 @@ function renderVisits(visits) {
     tr.append(
       cell(v.at.replace("T", " ").slice(0, 19)),
       cell(v.site.replace(".damianhoward.com", "")),
-      cell(v.path),
-      cell([v.city, v.country].filter(Boolean).join(", ") || "?", "dim"),
-      cell(
+      truncCell(v.path),
+      truncCell([v.city, v.country].filter(Boolean).join(", ") || "?", "dim"),
+      truncCell(
         [v.org || (v.asn ? `AS${v.asn}` : "?"), v.orgDomain]
           .filter(Boolean)
           .join(" · "),
         "dim",
       ),
       cell(`${v.browser} / ${v.os} / ${v.kind.toLowerCase()}`, "dim"),
-      cell(v.referrer || "", "dim"),
+      truncCell(v.referrer || "", "dim"),
       cell(v.engaged ? "yes" : "", v.engaged ? "pos" : ""),
     );
     body.append(tr);
@@ -40,9 +48,14 @@ function renderRollups(r) {
   let total = 0;
   let today = 0;
   const todayKey = new Date().toISOString().slice(0, 10);
-  for (const d of [...r.visitsPerDay].reverse()) {
+  const days = [...r.visitsPerDay].reverse();
+  for (const d of days) {
     total += d.visits;
     if (d.day === todayKey) today = d.visits;
+  }
+  // The 30-day window feeds the stat tiles; the panel itself lists only the latest days so
+  // the summary row cannot grow past the visits table below it.
+  for (const d of days.slice(0, 10)) {
     const tr = document.createElement("tr");
     tr.append(
       cell(d.day),

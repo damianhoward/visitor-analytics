@@ -17,4 +17,5 @@ data class Visit(
     val ipHash: String,
     val referrer: String?,
     val at: Instant,
+    val orgDomain: String? = null,
 )

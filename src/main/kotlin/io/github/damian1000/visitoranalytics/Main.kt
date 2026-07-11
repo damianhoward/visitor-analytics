@@ -2,6 +2,7 @@ package io.github.damian1000.visitoranalytics
 
 import io.github.damian1000.visitoranalytics.config.AppConfig
 import io.github.damian1000.visitoranalytics.device.UserAgentClassifier
+import io.github.damian1000.visitoranalytics.geo.JndiReverseDns
 import io.github.damian1000.visitoranalytics.geo.MaxmindGeoLocator
 import io.github.damian1000.visitoranalytics.ingest.CaddyLogTailer
 import io.github.damian1000.visitoranalytics.ingest.LogLineParser
@@ -37,6 +38,7 @@ fun main() {
             parser = LogLineParser(),
             filter = RequestFilter(),
             locator = locator,
+            reverseDns = JndiReverseDns(),
             classifier = UserAgentClassifier(),
             hasher = IpHasher(config.ipHashSalt),
             store = store,

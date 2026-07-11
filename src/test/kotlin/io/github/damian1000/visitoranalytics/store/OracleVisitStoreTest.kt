@@ -30,17 +30,20 @@ class OracleVisitStoreTest {
 
     @BeforeAll
     fun createSchema() {
-        // Comment lines go first: they may contain semicolons, and the split below is naive.
-        val ddl =
-            javaClass
-                .getResource("/db/migration/V1__visits.sql")!!
-                .readText()
-                .lines()
-                .filterNot { it.trimStart().startsWith("--") }
-                .joinToString("\n")
-        connect().use { connection ->
-            for (statement in ddl.split(";").map(String::trim).filter(String::isNotEmpty)) {
-                connection.createStatement().use { it.execute(statement) }
+        // The same migration files the real database gets, in order. Comment lines go first:
+        // they may contain semicolons, and the split below is naive.
+        for (migration in listOf("V1__visits.sql", "V2__org_domain.sql")) {
+            val ddl =
+                javaClass
+                    .getResource("/db/migration/$migration")!!
+                    .readText()
+                    .lines()
+                    .filterNot { it.trimStart().startsWith("--") }
+                    .joinToString("\n")
+            connect().use { connection ->
+                for (statement in ddl.split(";").map(String::trim).filter(String::isNotEmpty)) {
+                    connection.createStatement().use { it.execute(statement) }
+                }
             }
         }
     }

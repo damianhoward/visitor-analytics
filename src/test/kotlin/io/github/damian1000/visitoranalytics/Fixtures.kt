@@ -18,6 +18,7 @@ fun sampleVisit(
     org: String? = "Bredband2 AB",
     referrer: String? = "https://github.com/damian1000",
     at: Instant = Instant.parse("2026-07-11T10:00:00Z"),
+    orgDomain: String? = "bredband2.se",
 ) = Visit(
     site = site,
     path = path,
@@ -27,6 +28,7 @@ fun sampleVisit(
     ipHash = "ab".repeat(32),
     referrer = referrer,
     at = at,
+    orgDomain = orgDomain,
 )
 
 /** In-memory [VisitStore] that can be told to fail, for pipeline and buffering tests. */

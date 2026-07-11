@@ -95,6 +95,7 @@ class AdminServer(
             node.put("city", visit.geo.city)
             visit.geo.asn?.let { node.put("asn", it) }
             node.put("org", visit.geo.org)
+            node.put("orgDomain", visit.orgDomain)
             node.put("browser", visit.device.browser)
             node.put("os", visit.device.os)
             node.put("kind", visit.device.kind.name)

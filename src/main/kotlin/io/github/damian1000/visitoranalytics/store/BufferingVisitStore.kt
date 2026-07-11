@@ -63,6 +63,7 @@ class BufferingVisitStore(
         node.put("ipHash", visit.ipHash)
         node.put("referrer", visit.referrer)
         node.put("at", visit.at.toEpochMilli())
+        node.put("orgDomain", visit.orgDomain)
         return mapper.writeValueAsString(node)
     }
 
@@ -88,6 +89,7 @@ class BufferingVisitStore(
             ipHash = node.get("ipHash").asText(),
             referrer = node.get("referrer")?.takeUnless { it.isNull }?.asText(),
             at = Instant.ofEpochMilli(node.get("at").asLong()),
+            orgDomain = node.get("orgDomain")?.takeUnless { it.isNull }?.asText(),
         )
     }
 }

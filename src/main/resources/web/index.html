@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Visitor Analytics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/admin/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">&#9670;</span> VISITOR ANALYTICS
+        <span class="eyebrow">traffic on the live sites</span>
+      </div>
+    </header>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="k">Visits (30d)</span
+        ><span class="v" id="st-visits">&mdash;</span>
+      </div>
+      <div class="stat">
+        <span class="k">Engaged rate</span
+        ><span class="v" id="st-engaged">&mdash;</span>
+      </div>
+      <div class="stat">
+        <span class="k">Top country</span
+        ><span class="v" id="st-country">&mdash;</span>
+      </div>
+      <div class="stat">
+        <span class="k">Today</span><span class="v" id="st-today">&mdash;</span>
+      </div>
+    </div>
+
+    <main class="grid">
+      <section class="panel" aria-labelledby="visits-heading">
+        <h2 class="phead" id="visits-heading">
+          Recent Visits
+          <span class="sub">newest first</span>
+        </h2>
+        <div class="scroll">
+          <table class="data" id="visits">
+            <thead>
+              <tr>
+                <th>time</th>
+                <th>site</th>
+                <th>path</th>
+                <th>location</th>
+                <th>network</th>
+                <th>client</th>
+                <th>referrer</th>
+                <th>engaged</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p id="error" class="error" role="alert" hidden></p>
+      </section>
+
+      <aside class="side">
+        <section class="panel" aria-labelledby="perday-heading">
+          <h2 class="phead" id="perday-heading">Visits per Day</h2>
+          <table class="data" id="per-day">
+            <thead>
+              <tr>
+                <th>day</th>
+                <th>visits</th>
+                <th>engaged</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </section>
+        <section class="panel" aria-labelledby="countries-heading">
+          <h2 class="phead" id="countries-heading">Top Countries</h2>
+          <table class="data" id="countries">
+            <tbody></tbody>
+          </table>
+        </section>
+        <section class="panel" aria-labelledby="referrers-heading">
+          <h2 class="phead" id="referrers-heading">Top Referrers</h2>
+          <table class="data" id="referrers">
+            <tbody></tbody>
+          </table>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="statusbar">
+      <span class="sb-item">refreshed <span id="age">&mdash;</span></span>
+      <span class="grow"></span>
+      <span class="sb-item tagline"
+        >salted IP hashes &middot; 90-day retention</span
+      >
+      <span class="sb-item">
+        <a
+          href="https://github.com/damian1000/visitor-analytics"
+          target="_blank"
+          rel="noopener"
+        >
+          github.com/damian1000/visitor-analytics
+        </a>
+      </span>
+    </footer>
+
+    <script src="/admin/app.js"></script>
+  </body>
+</html>

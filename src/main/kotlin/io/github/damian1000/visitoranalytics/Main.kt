@@ -44,7 +44,7 @@ fun main() {
             store = store,
         )
 
-    val tailer = CaddyLogTailer(config.logPaths)
+    val tailer = CaddyLogTailer(config.logPaths, statePath = config.tailerStatePath)
     tailer.start(pipeline::onLine)
 
     val pruner = RetentionPruner(store, config.retentionDays)

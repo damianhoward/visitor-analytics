@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Forced command for the analytics-logship key in box 2's authorized_keys: exposes exactly two
+# read-only operations on the trading access log — its size, and its bytes from an offset.
+# Installed at /usr/local/bin/logship-read on box 2 (manual: deploy.yml reaches box 1 only).
+set -euo pipefail
+
+FILE=/var/log/caddy/trading.log
+
+case "${SSH_ORIGINAL_COMMAND:-}" in
+  size)
+    stat -c%s "$FILE"
+    ;;
+  read\ *)
+    offset="${SSH_ORIGINAL_COMMAND#read }"
+    [[ "$offset" =~ ^[0-9]+$ ]] || exit 1
+    exec tail -c +"$((offset + 1))" "$FILE"
+    ;;
+  *)
+    exit 1
+    ;;
+esac

@@ -86,6 +86,38 @@ class CaddyLogTailerTest {
     }
 
     @Test
+    fun `resumes from the persisted offset across restarts`() {
+        val log = dir.resolve("access.log")
+        val state = dir.resolve("positions.properties")
+        CaddyLogTailer(listOf(log), pollMillis = 5, statePath = state).use {
+            it.start(lines::add)
+            append(log, "seen before restart")
+            awaitLines(1)
+        }
+        // Lines written while no tailer is running — the deploy-restart window.
+        append(log, "written while down", "also while down")
+        CaddyLogTailer(listOf(log), pollMillis = 5, statePath = state).use {
+            it.start(lines::add)
+            append(log, "after restart")
+            awaitLines(4)
+        }
+        assertThat(lines, contains("seen before restart", "written while down", "also while down", "after restart"))
+    }
+
+    @Test
+    fun `without persisted state a pre-existing file still starts at its end`() {
+        val log = dir.resolve("access.log")
+        val state = dir.resolve("positions.properties")
+        append(log, "history")
+        CaddyLogTailer(listOf(log), pollMillis = 5, statePath = state).use {
+            it.start(lines::add)
+            append(log, "new")
+            awaitLines(1)
+        }
+        assertThat(lines, contains("new"))
+    }
+
+    @Test
     fun `tails multiple files`() {
         val a = dir.resolve("a.log")
         val b = dir.resolve("b.log")

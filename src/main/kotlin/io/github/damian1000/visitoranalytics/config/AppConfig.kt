@@ -16,6 +16,7 @@ data class AppConfig(
     val asnDbPath: Path,
     val ipHashSalt: String,
     val bufferPath: Path,
+    val tailerStatePath: Path,
     val port: Int,
     val retentionDays: Int,
 ) {
@@ -36,6 +37,9 @@ data class AppConfig(
                 asnDbPath = Path.of(required(env, "GEOLITE_ASN_DB")),
                 ipHashSalt = required(env, "IP_HASH_SALT"),
                 bufferPath = Path.of(required(env, "BUFFER_PATH")),
+                tailerStatePath =
+                    env["TAILER_STATE_PATH"]?.let { Path.of(it) }
+                        ?: Path.of(required(env, "BUFFER_PATH")).resolveSibling("tailer-positions.properties"),
                 port = port(env["PORT"] ?: "8083"),
                 retentionDays = days(env["RETENTION_DAYS"] ?: "90"),
             )

@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Pinned to 2.3.x across the portfolio's repos; this repo keeps the same line so a
+      # future move to public (or shared tooling) doesn't fork the toolchain.
+      - dependency-name: org.jetbrains.kotlin.jvm
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

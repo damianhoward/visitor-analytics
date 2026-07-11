@@ -5,6 +5,7 @@ import io.github.damian1000.visitoranalytics.device.Device
 import io.github.damian1000.visitoranalytics.device.UserAgentClassifier
 import io.github.damian1000.visitoranalytics.geo.GeoInfo
 import io.github.damian1000.visitoranalytics.geo.GeoLocator
+import io.github.damian1000.visitoranalytics.geo.ReverseDns
 import io.github.damian1000.visitoranalytics.ingest.LogLineParser
 import io.github.damian1000.visitoranalytics.ingest.RequestFilter
 import io.github.damian1000.visitoranalytics.privacy.IpHasher
@@ -23,6 +24,10 @@ class AnalyticsPipelineTest {
             locator =
                 object : GeoLocator {
                     override fun locate(ip: String) = geo
+                },
+            reverseDns =
+                object : ReverseDns {
+                    override fun domain(ip: String) = "virginm.net"
                 },
             classifier = UserAgentClassifier(),
             hasher = IpHasher("a-test-salt-of-sufficient-length"),
@@ -53,6 +58,7 @@ class AnalyticsPipelineTest {
         assertThat(visit.device, equalTo(Device("Chrome", "Windows", Device.Kind.DESKTOP)))
         assertThat(visit.ipHash, equalTo(IpHasher("a-test-salt-of-sufficient-length").hash("203.0.113.7")))
         assertThat(visit.referrer, equalTo("https://github.com/damian1000"))
+        assertThat(visit.orgDomain, equalTo("virginm.net"))
     }
 
     @Test

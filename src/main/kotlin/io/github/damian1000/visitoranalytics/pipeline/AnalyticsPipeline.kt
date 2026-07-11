@@ -2,6 +2,7 @@ package io.github.damian1000.visitoranalytics.pipeline
 
 import io.github.damian1000.visitoranalytics.device.UserAgentClassifier
 import io.github.damian1000.visitoranalytics.geo.GeoLocator
+import io.github.damian1000.visitoranalytics.geo.ReverseDns
 import io.github.damian1000.visitoranalytics.ingest.LogLineParser
 import io.github.damian1000.visitoranalytics.ingest.RequestFilter
 import io.github.damian1000.visitoranalytics.model.Visit
@@ -17,6 +18,7 @@ class AnalyticsPipeline(
     private val parser: LogLineParser,
     private val filter: RequestFilter,
     private val locator: GeoLocator,
+    private val reverseDns: ReverseDns,
     private val classifier: UserAgentClassifier,
     private val hasher: IpHasher,
     private val store: VisitStore,
@@ -35,6 +37,7 @@ class AnalyticsPipeline(
                     ipHash = hasher.hash(request.remoteIp),
                     referrer = request.referrer,
                     at = request.at,
+                    orgDomain = reverseDns.domain(request.remoteIp),
                 ),
             )
         } catch (e: Exception) {

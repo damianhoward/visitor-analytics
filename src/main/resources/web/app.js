@@ -20,7 +20,12 @@ function renderVisits(visits) {
       cell(v.site.replace(".damianhoward.com", "")),
       cell(v.path),
       cell([v.city, v.country].filter(Boolean).join(", ") || "?", "dim"),
-      cell(v.org || (v.asn ? `AS${v.asn}` : "?"), "dim"),
+      cell(
+        [v.org || (v.asn ? `AS${v.asn}` : "?"), v.orgDomain]
+          .filter(Boolean)
+          .join(" · "),
+        "dim",
+      ),
       cell(`${v.browser} / ${v.os} / ${v.kind.toLowerCase()}`, "dim"),
       cell(v.referrer || "", "dim"),
       cell(v.engaged ? "yes" : "", v.engaged ? "pos" : ""),

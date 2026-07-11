@@ -35,6 +35,7 @@ class OracleVisitStore(
                 statement.setString(11, visit.ipHash)
                 statement.setString(12, visit.referrer)
                 statement.setTimestamp(13, Timestamp.from(visit.at))
+                statement.setString(14, visit.orgDomain)
                 statement.executeUpdate()
             }
         }
@@ -124,16 +125,18 @@ class OracleVisitStore(
             ipHash = getString("ip_hash"),
             referrer = getString("referrer"),
             at = getTimestamp("visited_at").toInstant(),
+            orgDomain = getString("org_domain"),
         )
 
     companion object {
         private const val DAY_SECONDS = 86_400L
 
         private const val INSERT =
-            "INSERT INTO visits (site, path, engaged, country, city, asn, org, browser, os, device_kind, ip_hash, referrer, visited_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO visits (site, path, engaged, country, city, asn, org, browser, os, " +
+                "device_kind, ip_hash, referrer, visited_at, org_domain) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         private const val RECENT =
-            "SELECT site, path, engaged, country, city, asn, org, browser, os, device_kind, ip_hash, referrer, visited_at " +
+            "SELECT site, path, engaged, country, city, asn, org, browser, os, device_kind, ip_hash, referrer, visited_at, org_domain " +
                 "FROM visits ORDER BY visited_at DESC FETCH FIRST ? ROWS ONLY"
 
         // "day" would be the natural alias, but DAY is reserved in H2 (not Oracle).

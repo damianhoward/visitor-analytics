@@ -1,0 +1,17 @@
+[Unit]
+Description=Visitor analytics over the live sites' Caddy access logs
+After=network.target
+
+[Service]
+Environment=JAVA_HOME=/opt/jdk25
+Environment=JAVA_OPTS=-Xmx96m
+# Box-local config: Caddy log paths, DB triple, GeoLite2 paths, hash salt, buffer path, PORT.
+EnvironmentFile=/etc/visitor-analytics/env
+ExecStart=/home/ubuntu/visitor-analytics/bin/visitor-analytics
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+User=ubuntu
+
+[Install]
+WantedBy=multi-user.target

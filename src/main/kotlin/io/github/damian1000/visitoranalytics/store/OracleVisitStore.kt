@@ -6,6 +6,7 @@ import io.github.damian1000.visitoranalytics.model.Visit
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import java.sql.SQLIntegrityConstraintViolationException
 import java.sql.Timestamp
 import java.time.Clock
 
@@ -20,6 +21,15 @@ class OracleVisitStore(
     private val clock: Clock = Clock.systemUTC(),
 ) : VisitStore {
     override fun record(visit: Visit) {
+        try {
+            insert(visit)
+        } catch (_: SQLIntegrityConstraintViolationException) {
+            // A replay of an already-recorded visit (tailer resume, buffer flush retry,
+            // shipper refetch) — ux_visits_dedupe already holds the row.
+        }
+    }
+
+    private fun insert(visit: Visit) {
         connect().use { connection ->
             connection.prepareStatement(INSERT).use { statement ->
                 statement.setString(1, visit.site)

@@ -32,7 +32,7 @@ class OracleVisitStoreTest {
     fun createSchema() {
         // The same migration files the real database gets, in order. Comment lines go first:
         // they may contain semicolons, and the split below is naive.
-        for (migration in listOf("V1__visits.sql", "V2__org_domain.sql")) {
+        for (migration in listOf("V1__visits.sql", "V2__org_domain.sql", "V3__dedupe.sql")) {
             val ddl =
                 javaClass
                     .getResource("/db/migration/$migration")!!
@@ -56,6 +56,14 @@ class OracleVisitStoreTest {
     @Test
     fun `a recorded visit reads back whole`() {
         val visit = sampleVisit(engaged = true)
+        store.record(visit)
+        assertThat(store.recent(10), contains(visit))
+    }
+
+    @Test
+    fun `a replayed visit is recorded once`() {
+        val visit = sampleVisit()
+        store.record(visit)
         store.record(visit)
         assertThat(store.recent(10), contains(visit))
     }
@@ -92,10 +100,10 @@ class OracleVisitStoreTest {
 
     @Test
     fun `top countries counts and ranks, skipping unknowns`() {
-        store.record(sampleVisit(country = "Sweden"))
-        store.record(sampleVisit(country = "Sweden"))
-        store.record(sampleVisit(country = "United Kingdom"))
-        store.record(sampleVisit(country = null))
+        store.record(sampleVisit(country = "Sweden", at = now.minusSeconds(1)))
+        store.record(sampleVisit(country = "Sweden", at = now.minusSeconds(2)))
+        store.record(sampleVisit(country = "United Kingdom", at = now.minusSeconds(3)))
+        store.record(sampleVisit(country = null, at = now.minusSeconds(4)))
 
         assertThat(
             store.topCountries(5),
@@ -105,9 +113,9 @@ class OracleVisitStoreTest {
 
     @Test
     fun `top referrers ranks and bounds`() {
-        store.record(sampleVisit(referrer = "https://github.com/damian1000"))
-        store.record(sampleVisit(referrer = "https://github.com/damian1000"))
-        store.record(sampleVisit(referrer = "https://linkedin.com"))
+        store.record(sampleVisit(referrer = "https://github.com/damian1000", at = now.minusSeconds(1)))
+        store.record(sampleVisit(referrer = "https://github.com/damian1000", at = now.minusSeconds(2)))
+        store.record(sampleVisit(referrer = "https://linkedin.com", at = now.minusSeconds(3)))
 
         assertThat(store.topReferrers(1), equalTo(listOf(LabelCount("https://github.com/damian1000", 2))))
     }
@@ -115,9 +123,9 @@ class OracleVisitStoreTest {
     @Test
     fun `engaged rate is a fraction, zero when empty`() {
         assertThat(store.engagedRate(), equalTo(0.0))
-        store.record(sampleVisit(engaged = true))
-        store.record(sampleVisit(engaged = false))
-        store.record(sampleVisit(engaged = false))
+        store.record(sampleVisit(engaged = true, at = now.minusSeconds(1)))
+        store.record(sampleVisit(engaged = false, at = now.minusSeconds(2)))
+        store.record(sampleVisit(engaged = false, at = now.minusSeconds(3)))
         assertThat(store.engagedRate(), closeTo(1.0 / 3, 1e-9))
     }
 

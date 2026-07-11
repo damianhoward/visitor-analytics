@@ -30,6 +30,18 @@ class AppConfigTest {
     }
 
     @Test
+    fun `tailer state defaults beside the buffer and is overridable`() {
+        assertThat(
+            AppConfig.fromEnv(complete).tailerStatePath,
+            equalTo(Path.of("/var/lib/visitor-analytics/tailer-positions.properties")),
+        )
+        assertThat(
+            AppConfig.fromEnv(complete + ("TAILER_STATE_PATH" to "/tmp/positions")).tailerStatePath,
+            equalTo(Path.of("/tmp/positions")),
+        )
+    }
+
+    @Test
     fun `port and retention are overridable`() {
         val config = AppConfig.fromEnv(complete + mapOf("PORT" to "9000", "RETENTION_DAYS" to "30"))
         assertThat(config.port, equalTo(9000))

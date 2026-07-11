@@ -1,21 +1,10 @@
 [Unit]
-Description=Ship box 2's trading.damianhoward.com access log for visitor analytics
+Description=Fetch the increment of box 2's trading.damianhoward.com access log
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-# The key is restricted on box 2 to a forced tail of the trading access log (no pty, no
-# forwarding). tail -n0 means a restart resumes from now: a brief gap, never duplicates.
-ExecStart=/usr/bin/ssh -i /home/ubuntu/.ssh/analytics_logship \
-  -o StrictHostKeyChecking=accept-new \
-  -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
-  -o ExitOnForwardFailure=yes \
-  ubuntu@10.0.0.91 tail
-StandardOutput=append:/var/log/remote/trading.log
-Restart=always
-RestartSec=5
-NoNewPrivileges=true
+Type=oneshot
+ExecStart=/usr/local/bin/logship-fetch
 User=ubuntu
-
-[Install]
-WantedBy=multi-user.target
+NoNewPrivileges=true

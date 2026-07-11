@@ -79,6 +79,7 @@ jobs:
         run: |
           scp -i ~/.ssh/deploy_key visitor-analytics-dist.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/tmp/visitor-analytics-dist.tar.gz"
           scp -i ~/.ssh/deploy_key deploy/visitor-analytics.service "$DEPLOY_USER@$DEPLOY_HOST:/tmp/visitor-analytics.service"
+          scp -i ~/.ssh/deploy_key deploy/trading-logship.service "$DEPLOY_USER@$DEPLOY_HOST:/tmp/trading-logship.service"
 
       - name: Release and restart
         env:
@@ -98,13 +99,23 @@ jobs:
           cp -a "$tmp/visitor-analytics/bin" "$tmp/visitor-analytics/lib" "$APP/"
           rm -rf "$tmp" /tmp/visitor-analytics-dist.tar.gz
 
-          # Keep the host's unit in lockstep with the version-controlled one.
+          # Keep the host's units in lockstep with the version-controlled ones.
           if ! cmp -s /tmp/visitor-analytics.service /etc/systemd/system/visitor-analytics.service; then
             sudo cp /tmp/visitor-analytics.service /etc/systemd/system/visitor-analytics.service
             sudo systemctl daemon-reload
             sudo systemctl enable visitor-analytics
           fi
           rm -f /tmp/visitor-analytics.service
+
+          # The log-shipping pipe (box 2's trading access log -> /var/log/remote) only restarts
+          # when its unit actually changed; an app release must not interrupt the tail.
+          if ! cmp -s /tmp/trading-logship.service /etc/systemd/system/trading-logship.service; then
+            sudo cp /tmp/trading-logship.service /etc/systemd/system/trading-logship.service
+            sudo systemctl daemon-reload
+            sudo systemctl enable trading-logship
+            sudo systemctl restart trading-logship
+          fi
+          rm -f /tmp/trading-logship.service
 
           sudo systemctl restart visitor-analytics
           REMOTE

@@ -154,6 +154,35 @@ a:hover {
   border-bottom: 1px solid var(--rule);
 }
 
+.phead .filters {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.chip {
+  padding: 4px 9px;
+  background: var(--bg-pin);
+  border: 1px solid var(--rule-bright);
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--ink-2);
+  color: var(--ink);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
 .phead .sub {
   color: var(--ink-4);
   font-weight: 400;
@@ -198,6 +227,13 @@ table.data td.trunc {
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Location (city/country) and network (org/orgDomain) read as clipped fragments at 180px -- both
+   routinely carry more text than a path or referrer segment (e.g. "Tower Hamlets, United Kingdom",
+   "Amazon.com, Inc. · amazonaws.com"). */
+table.data td.trunc.wide {
+  max-width: 260px;
 }
 
 table.data tr:last-child td {

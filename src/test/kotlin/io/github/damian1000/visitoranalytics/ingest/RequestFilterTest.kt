@@ -13,13 +13,14 @@ class RequestFilterTest {
         path: String = "/",
         status: Int = 200,
         userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0",
+        referrer: String? = null,
     ) = RawRequest(
         host = "orderbook.damianhoward.com",
         method = method,
         path = path,
         status = status,
         remoteIp = "203.0.113.7",
-        referrer = null,
+        referrer = referrer,
         userAgent = userAgent,
         at = Instant.parse("2026-07-11T10:00:00Z"),
     )
@@ -78,5 +79,21 @@ class RequestFilterTest {
     @Test
     fun `drops posts outside the api`() {
         assertThat(filter.keep(request(method = "POST", path = "/login")), equalTo(false))
+    }
+
+    @Test
+    fun `drops CMS vulnerability-scan paths - the app returns 200 for them, not a real 404`() {
+        assertThat(filter.keep(request(path = "/wp-login.php")), equalTo(false))
+        assertThat(filter.keep(request(path = "/wp-admin/")), equalTo(false))
+        assertThat(filter.keep(request(path = "/wp-content/plugins/foo")), equalTo(false))
+        assertThat(filter.keep(request(path = "/wp-json/wp/v2")), equalTo(false))
+        assertThat(filter.keep(request(path = "/xmlrpc.php")), equalTo(false))
+        assertThat(filter.keep(request(path = "//wordpress/")), equalTo(false))
+    }
+
+    @Test
+    fun `drops a scan hit carried in via the referrer even when the path alone looks harmless`() {
+        val hit = request(path = "//blog/", referrer = "https://totaldetailingpa.com//blog//wp-login.php")
+        assertThat(filter.keep(hit), equalTo(false))
     }
 }

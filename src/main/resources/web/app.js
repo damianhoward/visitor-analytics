@@ -1,7 +1,43 @@
 const errorEl = document.getElementById("error");
 const ageEl = document.getElementById("age");
+const filterMeBtn = document.getElementById("filter-me");
+const filterNoiseBtn = document.getElementById("filter-noise");
 
 let lastRefreshAt = 0;
+let lastVisits = [];
+
+// Persisted across refreshes (the table reloads every 30s) and page loads. Client-side only: the
+// dashboard has no ipHash to match on (it's deliberately never sent to the browser -- see
+// AdminServer), so "me" is approximated by the one location/network combination that's actually
+// mine, not an exact identity match.
+const filterState = {
+  me: localStorage.getItem("hideMe") === "1",
+  noise: localStorage.getItem("hideNoise") === "1",
+};
+
+// Mirrors RequestFilter.SCAN_TOKENS on the ingest side deliberately: that filter stops new scan
+// hits from ever being stored, but doesn't retroactively clean up ones already recorded, and the
+// two lists are allowed to diverge over time as new scan patterns turn up.
+const SCAN_TOKENS = [
+  "wp-login",
+  "wp-admin",
+  "wp-content",
+  "wp-json",
+  "wp-includes",
+  "xmlrpc.php",
+  "wordpress",
+];
+
+const isMine = (v) =>
+  (v.city || "").toLowerCase() === "watford" &&
+  (v.org || "").toLowerCase().includes("virgin media");
+
+const isScanNoise = (v) =>
+  SCAN_TOKENS.some(
+    (t) =>
+      (v.path || "").toLowerCase().includes(t) ||
+      (v.referrer || "").toLowerCase().includes(t),
+  );
 
 const cell = (text, cls) => {
   const td = document.createElement("td");
@@ -21,18 +57,25 @@ const truncCell = (text, cls) => {
 function renderVisits(visits) {
   const body = document.querySelector("#visits tbody");
   body.replaceChildren();
-  for (const v of visits) {
+  const shown = visits.filter(
+    (v) =>
+      !(filterState.me && isMine(v)) && !(filterState.noise && isScanNoise(v)),
+  );
+  for (const v of shown) {
     const tr = document.createElement("tr");
     tr.append(
       cell(v.at.replace("T", " ").slice(0, 19)),
       cell(v.site.replace(".damianhoward.com", "")),
       truncCell(v.path),
-      truncCell([v.city, v.country].filter(Boolean).join(", ") || "?", "dim"),
+      truncCell(
+        [v.city, v.country].filter(Boolean).join(", ") || "?",
+        "dim wide",
+      ),
       truncCell(
         [v.org || (v.asn ? `AS${v.asn}` : "?"), v.orgDomain]
           .filter(Boolean)
           .join(" · "),
-        "dim",
+        "dim wide",
       ),
       cell(`${v.browser} / ${v.os} / ${v.kind.toLowerCase()}`, "dim"),
       truncCell(v.referrer || "", "dim"),
@@ -98,7 +141,8 @@ async function refresh() {
       throw new Error(visits.error || `HTTP ${visitsRes.status}`);
     if (!rollupsRes.ok)
       throw new Error(rollups.error || `HTTP ${rollupsRes.status}`);
-    renderVisits(visits);
+    lastVisits = visits;
+    renderVisits(lastVisits);
     renderRollups(rollups);
     errorEl.hidden = true;
     lastRefreshAt = Date.now();
@@ -108,6 +152,19 @@ async function refresh() {
     errorEl.hidden = false;
   }
 }
+
+function toggleFilter(key, button, storageKey) {
+  filterState[key] = !filterState[key];
+  localStorage.setItem(storageKey, filterState[key] ? "1" : "0");
+  button.setAttribute("aria-pressed", String(filterState[key]));
+  renderVisits(lastVisits);
+}
+
+filterMeBtn.setAttribute("aria-pressed", String(filterState.me));
+filterNoiseBtn.setAttribute("aria-pressed", String(filterState.noise));
+filterMeBtn.onclick = () => toggleFilter("me", filterMeBtn, "hideMe");
+filterNoiseBtn.onclick = () =>
+  toggleFilter("noise", filterNoiseBtn, "hideNoise");
 
 setInterval(() => {
   if (!lastRefreshAt) return;

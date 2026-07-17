@@ -16,7 +16,9 @@ Caddy JSON access logs → tail → parse → filter (assets/health/bots out) �
 enrich (GeoLite2 city + ASN, device class, salted IP hash) → Autonomous DB → /admin
 ```
 
-- The raw IP address is never stored — a salted SHA-256 hash supports repeat-visit detection.
+- The analytics database never stores the raw IP address — a salted SHA-256 hash supports
+  repeat-visit detection. The source Caddy access logs on the hosts do contain raw IPs, subject
+  to each box's log rotation.
 - Retention is 90 days; a pruner deletes older rows daily.
 - When the DB is unreachable (Always-Free ADB idles out after ~7 days), visits buffer to a local
   write-ahead file and flush on reconnect.

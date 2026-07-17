@@ -23,7 +23,7 @@ jobs:
 
       - name: Check for Claude attribution in history
         run: |
-          if git log --all --format="%B" | grep -iE "co-authored-by:[[:space:]]*claude|noreply@anthropic|generated (with|by)[[:space:]]*claude|🤖"; then
+          if git log --all --format="%B" | grep -iE "^co-authored-by:[[:space:]]*claude|noreply@anthropic|generated (with|by)[[:space:]]*claude|🤖"; then
             echo "::error::Claude attribution found in git history — see CLAUDE.md commit standards."
             exit 1
           fi

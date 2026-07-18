@@ -38,7 +38,7 @@ dependencies {
     // Caddy log lines are nested third-party JSON; geoip2 already carries jackson-databind, so
     // the parser is declared explicitly rather than leaned on transitively.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.1'
-    implementation 'com.maxmind.geoip2:geoip2:5.1.0'
+    implementation 'com.maxmind.geoip2:geoip2:5.2.0'
     implementation 'org.flywaydb:flyway-core:12.11.0'
     runtimeOnly 'org.flywaydb:flyway-database-oracle:12.11.0'
     runtimeOnly 'com.oracle.database.jdbc:ojdbc17:23.26.2.0.0'

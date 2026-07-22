@@ -2,36 +2,16 @@
 // (GeoLite2 location/ASN, device class, salted IP hash — never the raw address), stores visits
 // in the Autonomous DB, and serves an authenticated admin dashboard.
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '2.3.21'
+    id 'io.github.damian1000.kotlin-conventions' version '0.4.3'
     id 'application'
-    id 'jacoco'
-    id 'com.diffplug.spotless' version '8.8.0'
-    id 'org.owasp.dependencycheck' version '12.2.2'
 }
 
 group = 'io.github.damian1000'
 version = '1.0.0'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
-}
-
-kotlin {
-    jvmToolchain(25)
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
-    }
-}
-
 application {
     applicationName = 'visitor-analytics'
     mainClass = 'io.github.damian1000.visitoranalytics.MainKt'
-}
-
-repositories {
-    mavenCentral()
 }
 
 dependencies {
@@ -39,27 +19,19 @@ dependencies {
     // the parser is declared explicitly rather than leaned on transitively.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.1'
     implementation 'com.maxmind.geoip2:geoip2:5.2.0'
-    implementation 'org.flywaydb:flyway-core:12.11.0'
-    runtimeOnly 'org.flywaydb:flyway-database-oracle:12.11.0'
-    runtimeOnly 'com.oracle.database.jdbc:ojdbc17:23.26.2.0.0'
+    implementation deps.flyway.core
+    runtimeOnly deps.flyway.oracle
+    runtimeOnly deps.oracle.jdbc
     // Reads the Autonomous DB's auto-login wallet (cwallet.sso) for mutual TLS.
-    runtimeOnly 'com.oracle.database.security:oraclepki:23.26.2.0.0'
+    runtimeOnly deps.oracle.pki
     // Flyway and geoip2 log via slf4j; a binding routes warnings to stderr -> journalctl.
-    runtimeOnly 'org.slf4j:slf4j-simple:2.0.18'
+    runtimeOnly deps.slf4j.simple
 
-    testImplementation platform('org.junit:junit-bom:6.1.2')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation 'org.hamcrest:hamcrest:3.0'
+    testImplementation deps.hamcrest
     // Rollup SQL runs against H2 in Oracle compatibility mode; one live smoke covers real-dialect drift.
-    testImplementation 'com.h2database:h2:2.4.240'
-    testRuntimeOnly 'com.oracle.database.jdbc:ojdbc17:23.26.2.0.0'
-    testRuntimeOnly 'com.oracle.database.security:oraclepki:23.26.2.0.0'
-}
-
-test {
-    useJUnitPlatform()
-    finalizedBy jacocoTestReport
+    testImplementation deps.h2
+    testRuntimeOnly deps.oracle.jdbc
+    testRuntimeOnly deps.oracle.pki
 }
 
 // Only the process entry point (MainKt — main() wires the real log paths/DB/port and blocks) is
@@ -68,72 +40,17 @@ test {
 def coverageExclusions = ['**/visitoranalytics/MainKt.class']
 
 jacocoTestReport {
-    dependsOn test
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, excludes: coverageExclusions)
         }))
-    }
-    reports {
-        xml.required = true
-        html.required = true
     }
 }
 
 jacocoTestCoverageVerification {
-    dependsOn jacocoTestReport
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, excludes: coverageExclusions)
         }))
-    }
-    violationRules {
-        rule {
-            limit {
-                counter = 'INSTRUCTION'
-                value = 'COVEREDRATIO'
-                minimum = 0.90
-            }
-        }
-    }
-}
-
-check.dependsOn jacocoTestCoverageVerification
-
-spotless {
-    kotlin {
-        target 'src/**/*.kt'
-        ktlint('1.5.0')
-    }
-    kotlinGradle {
-        target '*.gradle.kts'
-        ktlint('1.5.0')
-    }
-    // Front-end assets held to the same bar as the Kotlin: Prettier formats and CI fails on drift.
-    format 'web', {
-        target 'src/main/resources/web/**/*.html', 'src/main/resources/web/**/*.css', 'src/main/resources/web/**/*.js'
-        prettier('3.4.2')
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-    // Config/docs (YAML workflows, Markdown) held to the same bar as the Kotlin.
-    format 'config', {
-        target '.github/**/*.yml', '.github/**/*.yaml', '*.md'
-        prettier('3.4.2')
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-}
-
-// OWASP dependency vulnerability scanner. Run: ./gradlew dependencyCheckAnalyze
-// Fails the build on any dependency with CVSS >= 7.0.
-dependencyCheck {
-    failBuildOnCVSS = 7.0f
-    formats = ['HTML', 'JSON']
-    analyzers {
-        assemblyEnabled = false
-        nodeEnabled = false
-        nodeAuditEnabled = false
-        nuspecEnabled = false
     }
 }

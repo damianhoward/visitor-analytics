@@ -125,5 +125,26 @@ class AdminServerTest {
                 HttpResponse.BodyHandlers.ofString(),
             )
         assertThat(response.statusCode(), equalTo(405))
+        assertThat(response.headers().firstValue("Allow").get(), equalTo("GET, HEAD"))
     }
+
+    @Test
+    fun `HEAD answers every GET route with the GET's status and headers, minus the body`() {
+        store.failWith = null
+        for (path in listOf("/healthz", "/admin", "/admin/app.css", "/admin/app.js", "/admin/api/visits", "/admin/api/rollups")) {
+            val head = head(path)
+            assertThat(path, head.statusCode(), equalTo(get(path).statusCode()))
+            assertThat(path, head.body(), equalTo(""))
+        }
+        assertThat(head("/admin").headers().firstValue("Content-Type").get(), containsString("text/html"))
+    }
+
+    private fun head(path: String): HttpResponse<String> =
+        client.send(
+            HttpRequest
+                .newBuilder(URI.create("http://127.0.0.1:${server.boundPort}$path"))
+                .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                .build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
 }

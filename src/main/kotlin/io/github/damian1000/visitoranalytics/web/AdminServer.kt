@@ -59,9 +59,11 @@ class AdminServer(
         executor.shutdownNow()
     }
 
+    // HEAD rides every GET route: the handler runs identically and respond() suppresses the body,
+    // so the status and headers a HEAD probe sees are the ones the GET would have produced.
     private fun route(exchange: HttpExchange) {
-        if (exchange.requestMethod != "GET") {
-            exchange.responseHeaders.add("Allow", "GET")
+        if (exchange.requestMethod != "GET" && exchange.requestMethod != "HEAD") {
+            exchange.responseHeaders.add("Allow", "GET, HEAD")
             return respond(exchange, 405, "text/plain", "method not allowed")
         }
         try {
@@ -164,8 +166,15 @@ class AdminServer(
     ) {
         val bytes = body.toByteArray(StandardCharsets.UTF_8)
         exchange.responseHeaders.add("Content-Type", contentType)
-        exchange.sendResponseHeaders(status, bytes.size.toLong())
-        exchange.responseBody.use { it.write(bytes) }
+        if (exchange.requestMethod == "HEAD") {
+            // Headers only: -1 tells the JDK server no body follows, which is the one length it
+            // accepts on a HEAD without logging a warning (it drops Content-Length either way).
+            exchange.sendResponseHeaders(status, -1)
+            exchange.close()
+        } else {
+            exchange.sendResponseHeaders(status, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
     }
 
     companion object {

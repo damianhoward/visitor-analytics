@@ -11,20 +11,24 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.SynchronousQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 /**
  * HTTP transport for the dashboard: static assets plus two JSON endpoints over [VisitStore].
  * Binds the loopback interface only — Caddy is the sole public entry, terminating TLS and
  * enforcing `basic_auth` in front of this server, so nothing here is reachable off the box.
  * A store failure (the ADB asleep or waking) maps to a 503 with a JSON error body; the
- * dashboard shows it and retries.
+ * dashboard shows it and retries. JDK [HttpServer] on a request pool capped at [maxPoolThreads];
+ * requests beyond the cap are refused at the connection rather than queued.
  */
 class AdminServer(
     private val store: VisitStore,
     private val assets: AdminAssets,
     private val port: Int,
     private val bindAddress: InetAddress = InetAddress.getLoopbackAddress(),
+    private val maxPoolThreads: Int = 16,
 ) {
     private val mapper = ObjectMapper()
     private lateinit var server: HttpServer
@@ -33,7 +37,13 @@ class AdminServer(
     /** Binds and starts serving; requesting port 0 binds an ephemeral port (see [boundPort]). */
     fun start() {
         server = HttpServer.create(InetSocketAddress(bindAddress, port), 0)
-        executor = Executors.newCachedThreadPool { Thread(it).apply { isDaemon = true } }
+        // Cached-pool reuse and keep-alive but with a hard thread ceiling: an unbounded pool would
+        // let a burst of concurrent requests grow threads without limit on the 96 MB box. No work
+        // queue — saturation refuses the new connection instead of queuing it.
+        executor =
+            ThreadPoolExecutor(0, maxPoolThreads, 60L, TimeUnit.SECONDS, SynchronousQueue()) {
+                Thread(it).apply { isDaemon = true }
+            }
         server.executor = executor
         server.createContext("/", ::route)
         server.start()

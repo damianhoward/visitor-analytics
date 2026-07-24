@@ -50,6 +50,7 @@ class RequestFilterTest {
     @Test
     fun `drops health probes and static assets`() {
         assertThat(filter.keep(request(path = "/healthz")), equalTo(false))
+        assertThat(filter.keep(request(path = "/readyz")), equalTo(false))
         assertThat(filter.keep(request(path = "/app.css")), equalTo(false))
         assertThat(filter.keep(request(path = "/app.js")), equalTo(false))
         assertThat(filter.keep(request(path = "/favicon.ico")), equalTo(false))

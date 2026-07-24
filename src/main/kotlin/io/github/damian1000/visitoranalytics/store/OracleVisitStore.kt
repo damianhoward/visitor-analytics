@@ -92,6 +92,17 @@ class OracleVisitStore(
             }
         }
 
+    override fun ping(): Boolean =
+        try {
+            connect().use { connection ->
+                connection.prepareStatement(PING).use { statement ->
+                    statement.executeQuery().use { rows -> rows.next() }
+                }
+            }
+        } catch (_: Exception) {
+            false
+        }
+
     private fun labelCounts(
         sql: String,
         n: Int,
@@ -161,5 +172,6 @@ class OracleVisitStore(
                 "GROUP BY referrer ORDER BY COUNT(*) DESC FETCH FIRST ? ROWS ONLY"
         private const val ENGAGED_RATE = "SELECT AVG(engaged) FROM visits"
         private const val DELETE_OLD = "DELETE FROM visits WHERE visited_at < ?"
+        private const val PING = "SELECT 1 FROM dual"
     }
 }

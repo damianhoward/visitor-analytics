@@ -44,6 +44,27 @@ class AdminServerTest {
     }
 
     @Test
+    fun `readyz is 200 when the database answers`() {
+        store.pingOk = true
+        val response = get("/readyz")
+        assertThat(response.statusCode(), equalTo(200))
+        assertThat(response.body(), containsString(""""ready":true"""))
+    }
+
+    @Test
+    fun `readyz is 503 when the database cannot be reached`() {
+        store.pingOk = false
+        try {
+            val response = get("/readyz")
+            assertThat(response.statusCode(), equalTo(503))
+            assertThat(response.body(), containsString(""""ready":false"""))
+            assertThat(response.body(), containsString(""""database":{"ok":false}"""))
+        } finally {
+            store.pingOk = true
+        }
+    }
+
+    @Test
     fun `root redirects to the dashboard`() {
         val response =
             HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build().send(

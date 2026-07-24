@@ -20,8 +20,10 @@ import java.util.concurrent.TimeUnit
  * Binds the loopback interface only — Caddy is the sole public entry, terminating TLS and
  * enforcing `basic_auth` in front of this server, so nothing here is reachable off the box.
  * A store failure (the ADB asleep or waking) maps to a 503 with a JSON error body; the
- * dashboard shows it and retries. JDK [HttpServer] on a request pool capped at [maxPoolThreads];
- * requests beyond the cap are refused at the connection rather than queued.
+ * dashboard shows it and retries. `/healthz` proves the web process answers; `/readyz` proves the
+ * database does too (the dashboard's one dependency), so a deploy that comes up before the ADB has
+ * woken reads as not-ready rather than live. JDK [HttpServer] on a request pool capped at
+ * [maxPoolThreads]; requests beyond the cap are refused at the connection rather than queued.
  */
 class AdminServer(
     private val store: VisitStore,
@@ -69,6 +71,7 @@ class AdminServer(
         try {
             when (exchange.requestURI.path) {
                 "/healthz" -> respond(exchange, 200, "text/plain", "ok")
+                "/readyz" -> ready(exchange)
                 "/" -> redirect(exchange, "/admin")
                 "/admin" -> respond(exchange, 200, "text/html; charset=utf-8", assets.indexHtml)
                 "/admin/app.css" -> respond(exchange, 200, "text/css; charset=utf-8", assets.appCss)
@@ -82,6 +85,13 @@ class AdminServer(
         } catch (e: Exception) {
             respond(exchange, 503, "application/json", errorJson("database unavailable: ${e.message}"))
         }
+    }
+
+    // Liveness says the web process answers; this says the database does too. [VisitStore.ping]
+    // swallows its own failure into false, so a sleeping ADB reads as 503, never a dropped request.
+    private fun ready(exchange: HttpExchange) {
+        val ok = store.ping()
+        respond(exchange, if (ok) 200 else 503, "application/json", """{"ready":$ok,"database":{"ok":$ok}}""")
     }
 
     private fun limit(exchange: HttpExchange): Int {

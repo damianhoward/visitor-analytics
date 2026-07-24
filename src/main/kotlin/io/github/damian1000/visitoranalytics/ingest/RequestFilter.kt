@@ -23,6 +23,7 @@ class RequestFilter {
 
     private fun String.isNoise(): Boolean =
         this == "/healthz" ||
+            this == "/readyz" ||
             startsWith("/api") ||
             ASSET_SUFFIXES.any { endsWith(it) }
 

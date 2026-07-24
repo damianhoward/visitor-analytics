@@ -138,4 +138,15 @@ class OracleVisitStoreTest {
         assertThat(deleted, equalTo(1))
         assertThat(store.recent(10).map { it.path }, contains("/new"))
     }
+
+    @Test
+    fun `ping is true when the database answers`() {
+        assertThat(store.ping(), equalTo(true))
+    }
+
+    @Test
+    fun `ping is false when the connection cannot be opened`() {
+        val unreachable = OracleVisitStore({ throw java.sql.SQLException("database unreachable") })
+        assertThat(unreachable.ping(), equalTo(false))
+    }
 }

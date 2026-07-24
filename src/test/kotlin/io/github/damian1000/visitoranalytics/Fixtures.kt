@@ -35,6 +35,7 @@ fun sampleVisit(
 open class FakeVisitStore : VisitStore {
     val recorded = mutableListOf<Visit>()
     var failWith: Exception? = null
+    var pingOk: Boolean = true
     private var successBudget: Int? = null
 
     /** Accept [successes] more records, then fail each one until [heal] is called. */
@@ -73,4 +74,6 @@ open class FakeVisitStore : VisitStore {
     override fun engagedRate(): Double = 0.0
 
     override fun deleteOlderThan(cutoff: Instant): Int = 0
+
+    override fun ping(): Boolean = pingOk
 }

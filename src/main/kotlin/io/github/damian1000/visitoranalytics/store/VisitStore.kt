@@ -34,4 +34,7 @@ interface VisitStore {
 
     /** Removes visits older than [cutoff]; returns how many rows went. */
     fun deleteOlderThan(cutoff: Instant): Int
+
+    /** True when the database answers a trivial query — the readiness probe's connectivity check. */
+    fun ping(): Boolean
 }

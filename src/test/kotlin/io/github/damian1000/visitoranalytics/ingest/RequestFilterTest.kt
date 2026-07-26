@@ -26,6 +26,20 @@ class RequestFilterTest {
     )
 
     @Test
+    fun `drops requests relayed by one of the estate's own hosts`() {
+        // The desk proxies its Trading tab over the public hostname, so this arrives at box 2
+        // carrying the visitor's user-agent but box 1's address. It is counted in the desk's log.
+        val relayed = RequestFilter(setOf("145.241.193.169"))
+        assertThat(relayed.keep(request().copy(remoteIp = "145.241.193.169")), equalTo(false))
+    }
+
+    @Test
+    fun `keeps a real visitor when internal proxies are configured`() {
+        val relayed = RequestFilter(setOf("145.241.193.169"))
+        assertThat(relayed.keep(request()), equalTo(true))
+    }
+
+    @Test
     fun `keeps page loads`() {
         assertThat(filter.keep(request(path = "/")), equalTo(true))
     }

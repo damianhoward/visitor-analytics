@@ -38,18 +38,19 @@ runs via `./gradlew dependencyCheckAnalyze`.
 
 ## Configuration (environment)
 
-| Variable          | Meaning                                              | Default  |
-| ----------------- | ---------------------------------------------------- | -------- |
-| `CADDY_LOG_PATHS` | Comma-separated JSON access log files to tail        | required |
-| `DB_URL`          | JDBC URL for the ADB (wallet via `TNS_ADMIN` in URL) | required |
-| `DB_USER`         | Schema user                                          | required |
-| `DB_PASSWORD`     | Schema password                                      | required |
-| `GEOLITE_CITY_DB` | Path to `GeoLite2-City.mmdb`                         | required |
-| `GEOLITE_ASN_DB`  | Path to `GeoLite2-ASN.mmdb`                          | required |
-| `IP_HASH_SALT`    | Salt for the IP hash                                 | required |
-| `BUFFER_PATH`     | Write-ahead file used while the DB is unreachable    | required |
-| `PORT`            | Admin server port (binds `127.0.0.1` only)           | `8083`   |
-| `RETENTION_DAYS`  | Visit retention before pruning                       | `90`     |
+| Variable             | Meaning                                                                                                        | Default  |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
+| `CADDY_LOG_PATHS`    | Comma-separated JSON access log files to tail                                                                  | required |
+| `DB_URL`             | JDBC URL for the ADB (wallet via `TNS_ADMIN` in URL)                                                           | required |
+| `DB_USER`            | Schema user                                                                                                    | required |
+| `DB_PASSWORD`        | Schema password                                                                                                | required |
+| `GEOLITE_CITY_DB`    | Path to `GeoLite2-City.mmdb`                                                                                   | required |
+| `GEOLITE_ASN_DB`     | Path to `GeoLite2-ASN.mmdb`                                                                                    | required |
+| `IP_HASH_SALT`       | Salt for the IP hash                                                                                           | required |
+| `BUFFER_PATH`        | Write-ahead file used while the DB is unreachable                                                              | required |
+| `PORT`               | Admin server port (binds `127.0.0.1` only)                                                                     | `8083`   |
+| `RETENTION_DAYS`     | Visit retention before pruning                                                                                 | `90`     |
+| `INTERNAL_PROXY_IPS` | Estate hosts that reach a site on a visitor's behalf; their requests are dropped rather than counted as visits | empty    |
 
 ## Deploy
 

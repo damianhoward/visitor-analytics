@@ -36,7 +36,7 @@ fun main() {
     val pipeline =
         AnalyticsPipeline(
             parser = LogLineParser(),
-            filter = RequestFilter(),
+            filter = RequestFilter(config.internalProxies),
             locator = locator,
             reverseDns = JndiReverseDns(),
             classifier = UserAgentClassifier(),

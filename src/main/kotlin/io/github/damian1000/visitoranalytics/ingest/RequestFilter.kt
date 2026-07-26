@@ -4,11 +4,22 @@ package io.github.damian1000.visitoranalytics.ingest
  * Decides which log lines are visits worth recording. Kept: successful page loads (GET of a
  * non-asset path) and API interactions (POST under `/api`). Dropped: health probes, static
  * assets, the per-page-load `GET /api/...` fetches (they'd double-count every page view), non-2xx
- * noise, self-declared bots, and CMS vulnerability-scan hits. [engaged] marks the kept requests
- * that show interaction — a POST is a placed order or a recompute, not just a look.
+ * noise, self-declared bots, CMS vulnerability-scan hits, and anything arriving from one of the
+ * estate's own hosts. [engaged] marks the kept requests that show interaction — a POST is a placed
+ * order or a recompute, not just a look.
+ *
+ * [internalProxies] names hosts that reach a site on a visitor's behalf rather than as one. The
+ * trading desk proxies its Trading tab to `trading.damianhoward.com` over the public hostname, so
+ * box 2's access log records those requests against box 1's address, carrying the visitor's own
+ * user-agent — indistinguishable from a real visit, and attributed to a machine. The visit is
+ * already counted where the visitor actually is, in the desk's own log, so counting it again here
+ * would both double it and place it in Frankfurt.
  */
-class RequestFilter {
+class RequestFilter(
+    private val internalProxies: Set<String> = emptySet(),
+) {
     fun keep(request: RawRequest): Boolean {
+        if (request.remoteIp in internalProxies) return false
         if (request.status !in 200..299) return false
         if (BOT_TOKENS.any { it in request.userAgent.lowercase() }) return false
         if (request.isScanHit()) return false

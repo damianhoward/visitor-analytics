@@ -19,6 +19,7 @@ data class AppConfig(
     val tailerStatePath: Path,
     val port: Int,
     val retentionDays: Int,
+    val internalProxies: Set<String>,
 ) {
     companion object {
         fun fromEnv(env: Map<String, String>): AppConfig =
@@ -42,6 +43,15 @@ data class AppConfig(
                         ?: Path.of(required(env, "BUFFER_PATH")).resolveSibling("tailer-positions.properties"),
                 port = port(env["PORT"] ?: "8083"),
                 retentionDays = days(env["RETENTION_DAYS"] ?: "90"),
+                // Optional: hosts in the estate that reach a site on a visitor's behalf. Unset
+                // means every request is treated as a visitor's, which is what a single-site
+                // deployment wants.
+                internalProxies =
+                    (env["INTERNAL_PROXY_IPS"] ?: "")
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .toSet(),
             )
 
         private fun required(

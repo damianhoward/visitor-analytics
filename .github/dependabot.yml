@@ -5,8 +5,10 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # Pinned to 2.3.x across the portfolio's repos; this repo keeps the same line so a
-      # future move to public (or shared tooling) doesn't fork the toolchain.
+      # Inherited from the shared platform, not declared here. CodeQL no longer caps it
+      # (github/codeql#21938 closed 2026-07-08), but CVE-2026-53914 is fixed in Kotlin 2.4.20,
+      # which has no GA release, and ktlint 1.5.0 cannot run under 2.4.10. Bumped in
+      # build-conventions when both land.
       - dependency-name: org.jetbrains.kotlin.jvm
         update-types:
           ["version-update:semver-major", "version-update:semver-minor"]

@@ -90,6 +90,7 @@ jobs:
           scp -i ~/.ssh/deploy_key deploy/trading-logship.service "$DEPLOY_USER@$DEPLOY_HOST:/tmp/trading-logship.service"
           scp -i ~/.ssh/deploy_key deploy/trading-logship.timer "$DEPLOY_USER@$DEPLOY_HOST:/tmp/trading-logship.timer"
           scp -i ~/.ssh/deploy_key deploy/logship-fetch.sh "$DEPLOY_USER@$DEPLOY_HOST:/tmp/logship-fetch.sh"
+          scp -i ~/.ssh/deploy_key deploy/logship-logrotate "$DEPLOY_USER@$DEPLOY_HOST:/tmp/logship-logrotate"
 
       # Release, health check and rollback are one remote script so the decision to roll back is
       # made on the box: a runner that dies between "restart" and "check" cannot leave a broken
@@ -125,6 +126,10 @@ jobs:
           # incremental fetch. The script install is idempotent; the units sync on diff so an
           # app release does not touch the schedule.
           sudo install -m 755 -o root -g root /tmp/logship-fetch.sh /usr/local/bin/logship-fetch
+          # Bounds the shipped copy of box 2's access log, which logship-fetch appends to and
+          # nothing else rotates — the privacy notices state 90 days for every raw access log.
+          sudo install -m 644 -o root -g root /tmp/logship-logrotate /etc/logrotate.d/trading-logship
+          rm -f /tmp/logship-logrotate
           logship_changed=0
           for unit in trading-logship.service trading-logship.timer; do
             if ! cmp -s "/tmp/$unit" "/etc/systemd/system/$unit"; then

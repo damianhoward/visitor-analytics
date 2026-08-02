@@ -2,6 +2,7 @@ package io.github.damian1000.visitoranalytics.web
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.damian1000.visitoranalytics.FakeVisitStore
+import io.github.damian1000.visitoranalytics.model.Visit
 import io.github.damian1000.visitoranalytics.sampleVisit
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.containsString
@@ -11,11 +12,15 @@ import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertThrows
+import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.sql.SQLException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AdminServerTest {
@@ -158,6 +163,52 @@ class AdminServerTest {
             assertThat(path, head.body(), equalTo(""))
         }
         assertThat(head("/admin").headers().firstValue("Content-Type").get(), containsString("text/html"))
+    }
+
+    // The bound is the reason this process survives a burst on a 96 MB box, and it is the kind of
+    // limit that quietly stops working when someone swaps the queue. Saturation must refuse the
+    // connection, not queue it: a queued request behind a slow database waits with no ceiling.
+    // The JDK server has no status line to send once the executor rejects, so the client sees a
+    // connection-level failure — that is the documented contract, matching trading-system's.
+    @Test
+    fun `requests beyond the thread cap are refused rather than queued`() {
+        val release = CountDownLatch(1)
+        val occupied = CountDownLatch(2)
+        val blocking =
+            object : FakeVisitStore() {
+                override fun recent(limit: Int): List<Visit> {
+                    occupied.countDown()
+                    release.await(5, TimeUnit.SECONDS)
+                    return emptyList()
+                }
+            }
+        val bounded = AdminServer(blocking, AdminAssets.load(), port = 0, maxPoolThreads = 2)
+        bounded.start()
+        val holders = mutableListOf<Thread>()
+        try {
+            repeat(2) {
+                holders +=
+                    Thread {
+                        runCatching {
+                            HttpClient.newHttpClient().send(
+                                HttpRequest.newBuilder(URI.create("http://127.0.0.1:${bounded.boundPort}/admin/api/visits")).GET().build(),
+                                HttpResponse.BodyHandlers.ofString(),
+                            )
+                        }
+                    }.apply {
+                        isDaemon = true
+                        start()
+                    }
+            }
+            assertThat("both pool threads occupied within 5s", occupied.await(5, TimeUnit.SECONDS), equalTo(true))
+
+            val request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:${bounded.boundPort}/healthz")).GET().build()
+            assertThrows<IOException> { client.send(request, HttpResponse.BodyHandlers.ofString()) }
+        } finally {
+            release.countDown()
+            holders.forEach { it.join(5_000) }
+            bounded.stop()
+        }
     }
 
     private fun head(path: String): HttpResponse<String> =

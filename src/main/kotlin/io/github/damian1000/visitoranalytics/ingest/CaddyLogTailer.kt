@@ -21,13 +21,25 @@ import java.util.Properties
  * A file whose size shrinks was rotated or truncated; tailing restarts from offset zero of the
  * (new) file at that path. Lines written after a rename but before the new file appears are the
  * rotation's loss — Caddy rotates by size, so that window is tiny.
+ *
+ * A poll reads at most [maxChunkBytes], not the whole backlog. This process runs in a 96 MB heap
+ * and the file is whatever size the log grew to while it was stopped, so sizing one array to the
+ * gap made memory a function of downtime. Catch-up therefore takes several polls, which is the
+ * intended trade: bounded memory and a bounded write rate at the store, rather than one burst.
+ *
+ * The poll thread is the whole ingest path, so nothing it does is allowed to end it. A failure
+ * reading a file, or a handler that throws, is reported and retried on the next poll; the thread
+ * outlives it. A dead tailer is invisible from outside — the dashboard keeps serving, so the
+ * service looks healthy while it silently stops recording.
  */
 class CaddyLogTailer(
     private val paths: List<Path>,
     private val pollMillis: Long = 1_000,
     private val statePath: Path? = null,
+    private val maxChunkBytes: Int = DEFAULT_MAX_CHUNK_BYTES,
 ) : AutoCloseable {
     private val positions = HashMap<Path, Long>()
+    private val lastFailedOffsets = HashMap<Path, Long>()
     private var thread: Thread? = null
 
     @Volatile
@@ -43,9 +55,17 @@ class CaddyLogTailer(
         thread =
             Thread({
                 while (running) {
-                    var advanced = false
-                    for (path in paths) advanced = pollFile(path, onLine) || advanced
-                    if (advanced) saveState()
+                    // Nothing here may escape: this thread is the entire ingest path, and losing
+                    // it stops recording silently while the dashboard carries on serving.
+                    try {
+                        var advanced = false
+                        for (path in paths) advanced = pollFile(path, onLine) || advanced
+                        if (advanced) saveState()
+                    } catch (e: Exception) {
+                        // The offset for a path that failed was not advanced, so the next poll
+                        // re-reads from the same place rather than stepping over the gap.
+                        report("poll failed", e)
+                    }
                     try {
                         Thread.sleep(pollMillis)
                     } catch (_: InterruptedException) {
@@ -75,23 +95,67 @@ class CaddyLogTailer(
         }
         RandomAccessFile(path.toFile(), "r").use { file ->
             file.seek(position)
-            val bytes = ByteArray((size - position).toInt())
+            // Bounded by the chunk, never by the backlog: (size - position) is however far behind
+            // this process fell, and .toInt() on it silently wrapped past 2 GB besides.
+            val chunk = minOf(size - position, maxChunkBytes.toLong()).toInt()
+            val bytes = ByteArray(chunk)
             file.readFully(bytes)
             var lineStart = 0
             for (i in bytes.indices) {
-                if (bytes[i] == NEWLINE) {
-                    val line = String(bytes, lineStart, i - lineStart, StandardCharsets.UTF_8).trimEnd('\r')
-                    if (line.isNotBlank()) onLine(line)
-                    lineStart = i + 1
+                if (bytes[i] != NEWLINE) continue
+                val line = String(bytes, lineStart, i - lineStart, StandardCharsets.UTF_8).trimEnd('\r')
+                if (line.isNotBlank()) {
+                    try {
+                        onLine(line)
+                    } catch (e: Exception) {
+                        // Stop at the line that failed rather than past it: leaving the offset on
+                        // it means the next poll retries, so a handler failure delays a line
+                        // instead of dropping it. Progress made earlier in the chunk still counts.
+                        reportLine(path, position + lineStart, e)
+                        return commit(path, position + lineStart)
+                    }
                 }
+                lineStart = i + 1
+            }
+            // No newline anywhere in a full chunk: the line is longer than the chunk, so waiting
+            // for its terminator would stall this path forever. Step over the chunk and resync at
+            // the next newline, loudly — a Caddy access-log line is ~1 KB, so this is a corrupt file.
+            if (lineStart == 0 && chunk == maxChunkBytes) {
+                report("no line terminator in $maxChunkBytes bytes of $path at $position; skipping", null)
+                return commit(path, position + chunk)
             }
             // A trailing fragment without its newline is a line still being written; leave it
             // unconsumed and pick it up whole on a later poll.
-            val consumed = position + lineStart
-            val moved = consumed != positions.getValue(path)
-            positions[path] = consumed
-            return moved
+            return commit(path, position + lineStart)
         }
+    }
+
+    private fun commit(
+        path: Path,
+        consumed: Long,
+    ): Boolean {
+        val moved = consumed != positions.getValue(path)
+        positions[path] = consumed
+        return moved
+    }
+
+    // Reported once per distinct offset: a line that keeps failing is retried every poll, and
+    // logging each attempt would bury the first occurrence under a line a second.
+    private fun reportLine(
+        path: Path,
+        offset: Long,
+        cause: Exception,
+    ) {
+        if (lastFailedOffsets[path] == offset) return
+        lastFailedOffsets[path] = offset
+        report("handler failed on $path at $offset; retrying", cause)
+    }
+
+    private fun report(
+        message: String,
+        cause: Exception?,
+    ) {
+        println("visitor-analytics: tailer $message${cause?.let { " (${it.message})" } ?: ""}")
     }
 
     private fun loadState(): Map<Path, Long> {
@@ -128,5 +192,8 @@ class CaddyLogTailer(
 
     companion object {
         private const val NEWLINE = '\n'.code.toByte()
+
+        /** Per-poll read ceiling: ~1000 access-log lines, and 1 MB against a 96 MB heap. */
+        const val DEFAULT_MAX_CHUNK_BYTES = 1024 * 1024
     }
 }

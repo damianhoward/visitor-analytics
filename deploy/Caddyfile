@@ -1,0 +1,57 @@
+# Baseline hardening on every response. frame-ancestors is 'self', not 'none', because the
+# trading desk frames the composed front ends through its own gateway origin.
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "frame-ancestors 'self'"
+	}
+}
+
+orderbook.damianhoward.com {
+	import security_headers
+	encode zstd gzip
+	log {
+		output file /var/log/caddy/orderbook.log {
+			mode 0644
+		}
+		format json
+	}
+	reverse_proxy localhost:8080 {
+		flush_interval -1
+	}
+}
+
+risk.damianhoward.com {
+	import security_headers
+	log {
+		output file /var/log/caddy/risk.log {
+			mode 0644
+		}
+		format json
+	}
+	reverse_proxy localhost:8081
+}
+
+admin.damianhoward.com {
+	import security_headers
+	encode zstd gzip
+	basic_auth {
+		skynet $2a$14$I1W/.s6NKMuvjYIft4cHku7wooTsvkmmvHzYYSDaN7.8ekxo4FS6a
+	}
+	reverse_proxy localhost:8083
+}
+
+desk.damianhoward.com {
+	import security_headers
+	log {
+		output file /var/log/caddy/desk.log {
+			mode 0644
+		}
+		format json
+	}
+	reverse_proxy localhost:8084 {
+		flush_interval -1
+	}
+}

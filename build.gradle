@@ -2,7 +2,7 @@
 // (GeoLite2 location/ASN, device class, salted IP hash — never the raw address), stores visits
 // in the Autonomous DB, and serves an authenticated admin dashboard.
 plugins {
-    id 'io.github.damian1000.kotlin-conventions' version '0.4.12'
+    id 'io.github.damian1000.kotlin-conventions' version '0.4.13'
     id 'application'
 }
 
@@ -37,20 +37,4 @@ dependencies {
 // Only the process entry point (MainKt — main() wires the real log paths/DB/port and blocks) is
 // excluded. The rest — tailer, parser, filter, enrichers, stores, pruner, admin server — is
 // exercised by tests and counted.
-def coverageExclusions = ['**/visitoranalytics/MainKt.class']
-
-jacocoTestReport {
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, excludes: coverageExclusions)
-        }))
-    }
-}
-
-jacocoTestCoverageVerification {
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, excludes: coverageExclusions)
-        }))
-    }
-}
+coverageExcludes = ['**/visitoranalytics/MainKt.class']

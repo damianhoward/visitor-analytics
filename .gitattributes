@@ -1,0 +1,10 @@
+# Keep the working copy byte-identical to what CI checks out. core.autocrlf gives this Windows
+# working copy CRLF while the Linux runner checks out LF, so Prettier's endOfLine default fails
+# locally on files that pass in CI.
+#
+# It is not only a formatter question here. deploy/ holds a systemd unit that is copied to a box,
+# and this repository's files were carrying CRLF: when the log-shipping rig was moved out to the
+# infrastructure repository, all five files arrived with \r and its CRLF gate rejected them. A
+# unit file with \r is bad enough; a script whose shebang reads `#!/usr/bin/env bash\r` does not
+# execute at all.
+* text=auto eol=lf

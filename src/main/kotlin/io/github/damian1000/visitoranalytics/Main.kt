@@ -4,6 +4,7 @@ import io.github.damian1000.visitoranalytics.config.AppConfig
 import io.github.damian1000.visitoranalytics.device.UserAgentClassifier
 import io.github.damian1000.visitoranalytics.geo.JndiReverseDns
 import io.github.damian1000.visitoranalytics.geo.MaxmindGeoLocator
+import io.github.damian1000.visitoranalytics.health.Readiness
 import io.github.damian1000.visitoranalytics.ingest.CaddyLogTailer
 import io.github.damian1000.visitoranalytics.ingest.LogLineParser
 import io.github.damian1000.visitoranalytics.ingest.RequestFilter
@@ -57,7 +58,15 @@ fun main() {
         }
     }, 1, 24 * 60, TimeUnit.MINUTES)
 
-    val server = AdminServer(store, AdminAssets.load(), config.port)
+    val readiness =
+        Readiness(
+            databaseOk = store::ping,
+            ingestAlive = { tailer.threadAlive },
+            ingestPollAgeMillis = tailer::pollAgeMillis,
+            ingestFailure = tailer::lastFailure,
+            ingestOffsets = tailer::offsets,
+        )
+    val server = AdminServer(store, AdminAssets.load(), config.port, readiness)
     Runtime.getRuntime().addShutdownHook(
         Thread {
             server.stop()

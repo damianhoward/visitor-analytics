@@ -1,5 +1,8 @@
 # visitor-analytics
 
+[![CI](https://github.com/damian1000/visitor-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/damian1000/visitor-analytics/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/damian1000/visitor-analytics/actions/workflows/codeql.yml/badge.svg)](https://github.com/damian1000/visitor-analytics/actions/workflows/codeql.yml)
+
 Visitor analytics for the live sites. Tails Caddy's JSON access logs on the host, enriches each
 kept request — GeoLite2 city/ASN, device class, a salted IP hash — and records visits in an
 Oracle Autonomous DB. An admin dashboard, behind Caddy `basic_auth`, shows recent visits and
@@ -38,9 +41,9 @@ enrich (GeoLite2 city + ASN, device class, salted IP hash) → Autonomous DB →
 
 JDK 25 via the Gradle toolchain; 90% instruction coverage enforced (only `MainKt` excluded).
 Rollup SQL is tested against H2 in Oracle compatibility mode plus one live smoke against the
-real ADB (`VISITOR_DB_URL` set enables it). CodeQL and dependency-review workflows need GitHub
-Advanced Security on a private repo, so CI runs build/test/coverage only; OWASP dependency-check
-runs via `./gradlew dependencyCheckAnalyze`.
+real ADB (`VISITOR_DB_URL` set enables it). CI runs build, test and coverage, plus CodeQL and
+dependency-review; OWASP dependency-check runs weekly and via `./gradlew dependencyCheckAnalyze`.
+`main` is protected and a merge waits for the build.
 
 ## Configuration (environment)
 

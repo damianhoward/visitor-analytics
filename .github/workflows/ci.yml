@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [main]
 
-# Calls the shared reusable pipeline. CodeQL and dependency-review are absent by constraint,
-# not oversight: both need GitHub Advanced Security on a private repository. OWASP
-# dependency-check covers the dependency side locally (./gradlew dependencyCheckAnalyze).
-# upload-coverage is off — this private repo has no Codecov.
+# Calls the shared reusable pipeline. CodeQL and dependency-review used to be absent here by
+# constraint — both need GitHub Advanced Security, which a private repository does not get on the
+# free plan. This repository is public now, so both run and neither is an exception any more.
+#
+# upload-coverage stays off until a Codecov project exists and CODECOV_TOKEN is set. That is the
+# only remaining difference from the other public repositories, and it is a missing credential
+# rather than a decision.
 jobs:
   build:
     uses: damian1000/.github/.github/workflows/ci.yml@main

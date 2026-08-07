@@ -1,0 +1,13 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    uses: damian1000/.github/.github/workflows/dep-review.yml@main

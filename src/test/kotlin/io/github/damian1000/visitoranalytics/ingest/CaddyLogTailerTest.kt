@@ -195,4 +195,57 @@ class CaddyLogTailerTest {
         // "before" is committed with the chunk that preceded the failure, so it is not replayed.
         assertThat(attempts.count { it == "before" }, `is`(1))
     }
+
+    @Test
+    fun `reports its own liveness while running, and stops reporting it after close`() {
+        val log = dir.resolve("access.log")
+        val tailer = tailer(log)
+        assertThat("not alive before start", !tailer.threadAlive)
+        assertThat("no poll age before start", tailer.pollAgeMillis(System.currentTimeMillis()) == null)
+
+        tailer.start(lines::add)
+        append(log, "one")
+        awaitLines(1)
+
+        assertThat("alive while running", tailer.threadAlive)
+        val age = tailer.pollAgeMillis(System.currentTimeMillis())
+        assertThat("a poll has completed, so there is an age", age != null)
+        assertThat("the loop is polling, so the age is small", age!! < 2_000)
+        assertThat("no failure on a healthy poll", tailer.lastFailure() == null)
+
+        tailer.close()
+        // This is what Readiness keys on: a closed or dead tailer stops being alive, and the probe
+        // goes 503 rather than reporting only that the database answers.
+        assertThat("not alive after close", !tailer.threadAlive)
+    }
+
+    @Test
+    fun `reports the consumed offset per file`() {
+        val log = dir.resolve("access.log")
+        tailer(log).use {
+            it.start(lines::add)
+            append(log, "hello")
+            awaitLines(1)
+            val deadline = System.currentTimeMillis() + 5_000
+            while (it.offsets()[log.toString()] == null && System.currentTimeMillis() < deadline) Thread.sleep(5)
+            assertThat("the offset advanced past the line", (it.offsets()[log.toString()] ?: 0) >= 6)
+        }
+    }
+
+    @Test
+    fun `a poll age keeps growing once the loop stops`() {
+        // The signal that catches a thread which is alive but wedged: the age is taken against a
+        // caller-supplied clock, so a stalled loop shows an age that only increases.
+        val log = dir.resolve("access.log")
+        val tailer = tailer(log)
+        tailer.start(lines::add)
+        append(log, "one")
+        awaitLines(1)
+        tailer.close()
+
+        val now = System.currentTimeMillis()
+        val later = tailer.pollAgeMillis(now + 60_000)
+        val earlier = tailer.pollAgeMillis(now)
+        assertThat("age grows with the clock once polling has stopped", later!! - earlier!! == 60_000L)
+    }
 }

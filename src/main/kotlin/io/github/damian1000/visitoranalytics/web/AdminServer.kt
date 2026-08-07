@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import io.github.damian1000.visitoranalytics.health.Readiness
 import io.github.damian1000.visitoranalytics.store.LabelCount
 import io.github.damian1000.visitoranalytics.store.VisitStore
 import java.net.InetAddress
@@ -29,6 +30,9 @@ class AdminServer(
     private val store: VisitStore,
     private val assets: AdminAssets,
     private val port: Int,
+    // Null in tests that only exercise routing, and in that case /readyz falls back to the
+    // database check alone rather than pretending to know about an ingest path that is not there.
+    private val readiness: Readiness? = null,
     private val bindAddress: InetAddress = InetAddress.getLoopbackAddress(),
     private val maxPoolThreads: Int = 16,
 ) {
@@ -90,8 +94,13 @@ class AdminServer(
     // Liveness says the web process answers; this says the database does too. [VisitStore.ping]
     // swallows its own failure into false, so a sleeping ADB reads as 503, never a dropped request.
     private fun ready(exchange: HttpExchange) {
-        val ok = store.ping()
-        respond(exchange, if (ok) 200 else 503, "application/json", """{"ready":$ok,"database":{"ok":$ok}}""")
+        val probe = readiness?.probe()
+        if (probe == null) {
+            val ok = store.ping()
+            respond(exchange, if (ok) 200 else 503, "application/json", """{"ready":$ok,"database":{"ok":$ok}}""")
+        } else {
+            respond(exchange, if (probe.ready) 200 else 503, "application/json", probe.json)
+        }
     }
 
     private fun limit(exchange: HttpExchange): Int {

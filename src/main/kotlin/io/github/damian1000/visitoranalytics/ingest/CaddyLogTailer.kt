@@ -45,6 +45,39 @@ class CaddyLogTailer(
     @Volatile
     private var running = false
 
+    // Written only by the poll thread, read by the readiness probe on an HTTP thread. `positions`
+    // itself stays single-writer and unsynchronised; a snapshot is republished after each cycle
+    // so the probe never reads a map that is being mutated.
+    @Volatile
+    private var lastPollMillis: Long = 0
+
+    @Volatile
+    private var lastFailure: String? = null
+
+    @Volatile
+    private var offsetSnapshot: Map<String, Long> = emptyMap()
+
+    /**
+     * What the ingest path is doing, for [io.github.damian1000.visitoranalytics.health.Readiness].
+     *
+     * [pollAgeMillis] measures the loop turning over, not lines arriving. That distinction is the
+     * whole point: a site with no visitors produces no lines for hours and is perfectly healthy,
+     * so a probe keyed on ingest volume would page on a quiet Sunday and stay silent on a dead
+     * tailer. The loop polls on a fixed interval whatever the traffic, so its age answers "is
+     * this still running" without asking "is anyone visiting".
+     */
+    val threadAlive: Boolean
+        get() = thread?.isAlive == true
+
+    /** Milliseconds since the last completed poll cycle, or null before the first one. */
+    fun pollAgeMillis(nowMillis: Long): Long? = if (lastPollMillis == 0L) null else nowMillis - lastPollMillis
+
+    /** The most recent poll failure, retained so a probe can report it; null once a poll succeeds. */
+    fun lastFailure(): String? = lastFailure
+
+    /** Consumed offset per tailed file, as of the last completed poll. */
+    fun offsets(): Map<String, Long> = offsetSnapshot
+
     fun start(onLine: (String) -> Unit) {
         check(thread == null) { "tailer already started" }
         val persisted = loadState()
@@ -61,11 +94,18 @@ class CaddyLogTailer(
                         var advanced = false
                         for (path in paths) advanced = pollFile(path, onLine) || advanced
                         if (advanced) saveState()
+                        lastFailure = null
                     } catch (e: Exception) {
                         // The offset for a path that failed was not advanced, so the next poll
                         // re-reads from the same place rather than stepping over the gap.
+                        lastFailure = e.message ?: e::class.simpleName
                         report("poll failed", e)
                     }
+                    // After the catch, so a failed cycle still counts as the loop being alive: a
+                    // tailer failing every poll is a different fault from a tailer that stopped,
+                    // and lastFailure is what distinguishes them.
+                    offsetSnapshot = positions.mapKeys { it.key.toString() }
+                    lastPollMillis = System.currentTimeMillis()
                     try {
                         Thread.sleep(pollMillis)
                     } catch (_: InterruptedException) {

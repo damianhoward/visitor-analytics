@@ -2,7 +2,7 @@
 // (GeoLite2 location/ASN, device class, salted IP hash — never the raw address), stores visits
 // in the Autonomous DB, and serves an authenticated admin dashboard.
 plugins {
-    id 'io.github.damian1000.kotlin-conventions' version '0.4.13'
+    id 'io.github.damian1000.kotlin-conventions' version '0.4.15'
     id 'application'
 }
 

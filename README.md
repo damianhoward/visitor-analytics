@@ -27,7 +27,7 @@ enrich (GeoLite2 city + ASN, device class, salted IP hash) → Autonomous DB →
 
 ```
 ./gradlew spotlessCheck
-./gradlew clean check
+./gradlew clean build
 ```
 
 JDK 25 via the Gradle toolchain; 90% instruction coverage enforced (only `MainKt` excluded).

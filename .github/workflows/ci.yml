@@ -6,16 +6,16 @@ on:
   pull_request:
     branches: [main]
 
-# Calls the shared reusable pipeline. CodeQL and dependency-review used to be absent here by
-# constraint — both need GitHub Advanced Security, which a private repository does not get on the
-# free plan. This repository is public now, so both run and neither is an exception any more.
+# Calls the shared reusable pipeline with no inputs at all, which is now the whole point: this
+# file is byte-identical to every other service's caller. CodeQL, dependency-review and the
+# coverage upload were all absent here by constraint rather than choice — the first two need
+# GitHub Advanced Security and the third needs a Codecov project, and a private free-plan
+# repository gets neither. Going public removed the constraint, so the variance goes with it.
 #
-# upload-coverage stays off until a Codecov project exists and CODECOV_TOKEN is set. That is the
-# only remaining difference from the other public repositories, and it is a missing credential
-# rather than a decision.
+# upload-coverage defaults to true, so it is not passed. An input restated at its default is a
+# difference a reader has to check, and the estate's rule is that shared configuration stays
+# identical and variance moves into the build.
 jobs:
   build:
     uses: damian1000/.github/.github/workflows/ci.yml@main
     secrets: inherit
-    with:
-      upload-coverage: false

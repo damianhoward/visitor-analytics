@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/damian1000/visitor-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/damian1000/visitor-analytics/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/damian1000/visitor-analytics/actions/workflows/codeql.yml/badge.svg)](https://github.com/damian1000/visitor-analytics/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/damian1000/visitor-analytics/graph/badge.svg)](https://codecov.io/gh/damian1000/visitor-analytics)
 
 Visitor analytics for the live sites. Tails Caddy's JSON access logs on the host, enriches each
 kept request — GeoLite2 city/ASN, device class, a salted IP hash — and records visits in an
@@ -43,7 +44,7 @@ JDK 25 via the Gradle toolchain; 90% instruction coverage enforced (only `MainKt
 Rollup SQL is tested against H2 in Oracle compatibility mode plus one live smoke against the
 real ADB (`VISITOR_DB_URL` set enables it). CI runs build, test and coverage, plus CodeQL and
 dependency-review; OWASP dependency-check runs weekly and via `./gradlew dependencyCheckAnalyze`.
-`main` is protected and a merge waits for the build.
+`main` is protected: a merge waits for the build, CodeQL and dependency-review.
 
 ## Configuration (environment)
 

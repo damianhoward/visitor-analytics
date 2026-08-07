@@ -1,13 +1,16 @@
 # visitor-analytics
 
-Visitor analytics for the live sites (orderbook, risk, trading). Tails Caddy's JSON access logs
-on box 1, enriches each kept request — GeoLite2 city/ASN, device class, a salted IP hash — and
-records visits in an Oracle Autonomous DB. An admin dashboard (behind Caddy `basic_auth` at
-`admin.damianhoward.com`) shows recent visits and rollups: visits per day, top countries, top
-referrers, engaged rate.
+Visitor analytics for the live sites. Tails Caddy's JSON access logs on the host, enriches each
+kept request — GeoLite2 city/ASN, device class, a salted IP hash — and records visits in an
+Oracle Autonomous DB. An admin dashboard, behind Caddy `basic_auth`, shows recent visits and
+rollups: visits per day, top countries, top referrers, engaged rate.
 
-This repo is private: the mechanism that captures and geolocates visits isn't something to
-publish alongside the sites it watches.
+It watches sites that are themselves public, and it is worth being direct about what that means:
+if you visit one of them, a row like the ones this code writes is what results. The design is
+here to be read for that reason rather than in spite of it. Nothing that protects the data is in
+this repository — the hash salt, the database credential and the dashboard's password are host
+state and always were — so publishing costs no protection, and keeping it private would only
+have made the handling harder to check.
 
 ## Pipeline
 
@@ -17,8 +20,11 @@ enrich (GeoLite2 city + ASN, device class, salted IP hash) → Autonomous DB →
 ```
 
 - The analytics database never stores the raw IP address — a salted SHA-256 hash supports
-  repeat-visit detection. The source Caddy access logs on the hosts do contain raw IPs, subject
-  to each box's log rotation.
+  repeat-visit detection. The salt has an enforced minimum length, because a short one puts the
+  whole IPv4 space within brute-force reach of the hashes it is meant to protect. The source
+  Caddy access logs on the hosts do contain raw IPs, subject to each host's log rotation.
+- The reverse-DNS enrichment keeps the registrable domain only, never the full hostname, which
+  can embed the address the hash exists to remove.
 - Retention is 90 days; a pruner deletes older rows daily.
 - When the DB is unreachable (Always-Free ADB idles out after ~7 days), visits buffer to a local
   write-ahead file and flush on reconnect.
@@ -54,6 +60,12 @@ runs via `./gradlew dependencyCheckAnalyze`.
 
 ## Deploy
 
-Box 1 (it reads box 1's Caddy logs directly), systemd + Caddy like the other services, ~96 MB
-heap. The admin server binds loopback only; Caddy terminates TLS and enforces `basic_auth` for
-`admin.damianhoward.com`.
+It runs on the host whose Caddy logs it reads, under systemd behind Caddy like the other
+services, with a ~96 MB heap. The admin server binds loopback only; Caddy terminates TLS and
+enforces `basic_auth` in front of it. See [`deploy/README.md`](deploy/README.md).
+
+The trading site runs on a second host, so its access log is shipped over SSH into a local file
+the tailer watches like any other. That rig spans both hosts and is owned by the private
+infrastructure repository rather than this one — a service repository can only reach the host it
+deploys to, and the half it could not reach is the forced command that restricts the shipping key
+to reading one file.

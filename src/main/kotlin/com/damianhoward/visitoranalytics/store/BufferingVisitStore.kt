@@ -1,9 +1,9 @@
 package com.damianhoward.visitoranalytics.store
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.damianhoward.visitoranalytics.device.Device
 import com.damianhoward.visitoranalytics.geo.GeoInfo
 import com.damianhoward.visitoranalytics.model.Visit
+import com.fasterxml.jackson.databind.ObjectMapper
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path

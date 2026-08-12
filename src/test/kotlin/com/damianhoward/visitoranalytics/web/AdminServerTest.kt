@@ -1,9 +1,9 @@
 package com.damianhoward.visitoranalytics.web
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.damianhoward.visitoranalytics.FakeVisitStore
 import com.damianhoward.visitoranalytics.model.Visit
 import com.damianhoward.visitoranalytics.sampleVisit
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.equalTo

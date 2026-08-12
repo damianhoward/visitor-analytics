@@ -1,13 +1,13 @@
 package com.damianhoward.visitoranalytics.web
 
+import com.damianhoward.visitoranalytics.health.Readiness
+import com.damianhoward.visitoranalytics.store.LabelCount
+import com.damianhoward.visitoranalytics.store.VisitStore
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
-import com.damianhoward.visitoranalytics.health.Readiness
-import com.damianhoward.visitoranalytics.store.LabelCount
-import com.damianhoward.visitoranalytics.store.VisitStore
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets

@@ -6,12 +6,12 @@ plugins {
     id 'application'
 }
 
-group = 'io.github.damian1000'
+group = 'com.damianhoward'
 version = '1.0.0'
 
 application {
     applicationName = 'visitor-analytics'
-    mainClass = 'io.github.damian1000.visitoranalytics.MainKt'
+    mainClass = 'com.damianhoward.visitoranalytics.MainKt'
 }
 
 dependencies {

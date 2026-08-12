@@ -1,8 +1,8 @@
 # visitor-analytics
 
-[![CI](https://github.com/damian1000/visitor-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/damian1000/visitor-analytics/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/damian1000/visitor-analytics/actions/workflows/codeql.yml/badge.svg)](https://github.com/damian1000/visitor-analytics/actions/workflows/codeql.yml)
-[![codecov](https://codecov.io/gh/damian1000/visitor-analytics/graph/badge.svg)](https://codecov.io/gh/damian1000/visitor-analytics)
+[![CI](https://github.com/damianhoward/visitor-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/damianhoward/visitor-analytics/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/damianhoward/visitor-analytics/actions/workflows/codeql.yml/badge.svg)](https://github.com/damianhoward/visitor-analytics/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/damianhoward/visitor-analytics/graph/badge.svg)](https://codecov.io/gh/damianhoward/visitor-analytics)
 
 Visitor analytics for the live sites. Tails Caddy's JSON access logs on the host, enriches each
 kept request — GeoLite2 city/ASN, device class, a salted IP hash — and records visits in an

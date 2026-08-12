@@ -17,5 +17,5 @@ on:
 # identical and variance moves into the build.
 jobs:
   build:
-    uses: damian1000/.github/.github/workflows/ci.yml@main
+    uses: damianhoward/.github/.github/workflows/ci.yml@main
     secrets: inherit

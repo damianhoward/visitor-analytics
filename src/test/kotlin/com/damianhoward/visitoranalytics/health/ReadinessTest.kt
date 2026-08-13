@@ -105,4 +105,90 @@ class ReadinessTest {
             probe.json,
         )
     }
+
+    @Test
+    fun `metrics renders the same verdict as the probe`() {
+        val healthy = readiness()
+        assertTrue(healthy.probe().ready)
+        assertTrue(healthy.metrics().contains("visitor_analytics_ready 1"), healthy.metrics())
+
+        val stopped = readiness(alive = false)
+        assertFalse(stopped.probe().ready)
+        assertTrue(stopped.metrics().contains("visitor_analytics_ready 0"), stopped.metrics())
+    }
+
+    @Test
+    fun `a stalled loop and a dead thread are distinguishable in the metrics`() {
+        // Both are 503 and they need different things done about them, so the verdict alone is not
+        // enough: a stalled loop may recover on its next poll, a dead thread never will.
+        val stalled = readiness(pollAgeMillis = Duration.ofMinutes(5).toMillis()).metrics()
+        assertTrue(stalled.contains("visitor_analytics_ingest_up 0"), stalled)
+        assertTrue(stalled.contains("visitor_analytics_ingest_thread_alive 1"), stalled)
+
+        val dead = readiness(alive = false).metrics()
+        assertTrue(dead.contains("visitor_analytics_ingest_up 0"), dead)
+        assertTrue(dead.contains("visitor_analytics_ingest_thread_alive 0"), dead)
+    }
+
+    @Test
+    fun `poll age is published in seconds`() {
+        // Prometheus base units. Every alert expression and dashboard function assumes them, and a
+        // threshold written against milliseconds is off by a factor of a thousand in the direction
+        // that never fires.
+        val metrics = readiness(pollAgeMillis = 1500).metrics()
+        assertTrue(metrics.contains("visitor_analytics_ingest_poll_age_seconds 1.500"), metrics)
+    }
+
+    @Test
+    fun `poll age is absent before the first poll rather than published as zero`() {
+        // Zero would read as a poll that just completed, which is the opposite of what a service
+        // that has never polled should say.
+        val metrics = readiness(pollAgeMillis = null).metrics()
+        assertFalse(metrics.contains("visitor_analytics_ingest_poll_age_seconds"), metrics)
+    }
+
+    @Test
+    fun `a poll failure is published as a boolean, never as its message`() {
+        // The message is written by whatever threw — a path, a permission, a filesystem error — so
+        // it is the free text document 17 keeps out of an endpoint, and as a label it would mint a
+        // series per distinct message. /readyz still carries it for a reader who has the host.
+        val metrics = readiness(failure = "permission denied: /var/log/caddy/orderbook.log").metrics()
+        assertTrue(metrics.contains("visitor_analytics_ingest_poll_failing 1"), metrics)
+        assertFalse(metrics.contains("permission denied"), metrics)
+    }
+
+    @Test
+    fun `offsets are labelled by file and sorted`() {
+        val metrics =
+            readiness(
+                offsets = mapOf("/var/log/remote/trading.log" to 900, "/var/log/caddy/orderbook.log" to 100),
+            ).metrics()
+        val lines = metrics.lineSequence().filter { it.startsWith("visitor_analytics_ingest_offset_bytes") }.toList()
+        assertEquals(
+            listOf(
+                """visitor_analytics_ingest_offset_bytes{file="/var/log/caddy/orderbook.log"} 100""",
+                """visitor_analytics_ingest_offset_bytes{file="/var/log/remote/trading.log"} 900""",
+            ),
+            lines,
+            metrics,
+        )
+    }
+
+    @Test
+    fun `every published series carries its HELP and TYPE`() {
+        // A series without a TYPE is parsed as untyped, which silently costs rate() and increase().
+        val body = readiness().metrics()
+        val names =
+            body
+                .lineSequence()
+                .filter { it.isNotBlank() && !it.startsWith("#") }
+                .map { it.substringBefore(' ').substringBefore('{') }
+                .distinct()
+                .toList()
+        assertTrue(names.isNotEmpty(), body)
+        for (name in names) {
+            assertTrue(body.contains("# HELP $name "), "$name has no HELP\n$body")
+            assertTrue(body.contains("# TYPE $name "), "$name has no TYPE\n$body")
+        }
+    }
 }

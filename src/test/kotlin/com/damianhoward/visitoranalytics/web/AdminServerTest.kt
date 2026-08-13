@@ -1,6 +1,7 @@
 package com.damianhoward.visitoranalytics.web
 
 import com.damianhoward.visitoranalytics.FakeVisitStore
+import com.damianhoward.visitoranalytics.health.Readiness
 import com.damianhoward.visitoranalytics.model.Visit
 import com.damianhoward.visitoranalytics.sampleVisit
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -54,6 +55,52 @@ class AdminServerTest {
         val response = get("/readyz")
         assertThat(response.statusCode(), equalTo(200))
         assertThat(response.body(), containsString(""""ready":true"""))
+    }
+
+    @Test
+    fun `metrics serves the Prometheus content type a collector parses on`() {
+        val wired =
+            AdminServer(
+                store,
+                AdminAssets.load(),
+                port = 0,
+                readiness =
+                    Readiness(
+                        databaseOk = { true },
+                        ingestAlive = { true },
+                        ingestPollAgeMillis = { 250 },
+                        ingestFailure = { null },
+                        ingestOffsets = { mapOf("/var/log/caddy/orderbook.log" to 4096L) },
+                    ),
+            )
+        wired.start()
+        try {
+            val response =
+                client.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:${wired.boundPort}/metrics")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString(),
+                )
+            assertThat(response.statusCode(), equalTo(200))
+            assertThat(
+                response.headers().firstValue("Content-Type").get(),
+                equalTo("text/plain; version=0.0.4; charset=utf-8"),
+            )
+            assertThat(response.body(), containsString("visitor_analytics_ready 1"))
+            assertThat(
+                response.body(),
+                containsString("""visitor_analytics_ingest_offset_bytes{file="/var/log/caddy/orderbook.log"} 4096"""),
+            )
+        } finally {
+            wired.stop()
+        }
+    }
+
+    @Test
+    fun `metrics is 503 rather than empty when no readiness is wired`() {
+        // A scrape that succeeds with an empty body looks like a service with nothing to report,
+        // which is the one thing this endpoint must never imply.
+        val response = get("/metrics")
+        assertThat(response.statusCode(), equalTo(503))
     }
 
     @Test

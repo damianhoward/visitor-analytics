@@ -69,6 +69,11 @@ a:hover {
 }
 
 .brand {
+  /* An h1, so the page has one. Every visual property it would otherwise inherit from the
+     user-agent stylesheet is set here — margin and font-size included, which are the two that
+     would move the topbar if they were left to the defaults. */
+  margin: 0;
+  font-size: inherit;
   font-weight: 700;
   letter-spacing: 0.08em;
 }

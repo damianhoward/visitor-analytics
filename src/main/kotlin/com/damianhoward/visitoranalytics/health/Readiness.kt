@@ -31,6 +31,7 @@ class Readiness(
     private val ingestFailure: () -> String?,
     private val ingestOffsets: () -> Map<String, Long>,
     private val maxPollAge: Duration = MAX_POLL_AGE,
+    private val process: ProcessMetrics = ProcessMetrics(),
     private val clock: Clock = Clock.systemUTC(),
 ) {
     data class Probe(
@@ -182,6 +183,10 @@ class Readiness(
                 .sortedBy { it.key }
                 .map { """{file=${quote(it.key)}}""" to it.value },
         )
+
+        // Appended, not interleaved: these are process facts rather than readiness conditions, and
+        // keeping them in their own block is what stops one being mistaken for the other.
+        out.append(process.render())
 
         return out.toString()
     }

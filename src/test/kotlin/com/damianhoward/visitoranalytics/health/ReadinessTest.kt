@@ -175,6 +175,28 @@ class ReadinessTest {
     }
 
     @Test
+    fun `metrics carry heap against its ceiling, which is what sizes the ceiling`() {
+        // This service is the largest process on box 1 — 142 MB resident against a 96 MB heap
+        // ceiling — and was the last of the five with no heap series at all, so its ceiling could
+        // only ever be sized from a reading taken by hand.
+        val metrics = readiness().metrics()
+
+        assertTrue(metrics.contains("visitor_analytics_jvm_heap_used_bytes"), metrics)
+        assertTrue(metrics.contains("visitor_analytics_jvm_heap_max_bytes"), metrics)
+        assertTrue(metrics.contains("visitor_analytics_process_uptime_seconds"), metrics)
+    }
+
+    @Test
+    fun `process metrics do not restate a readiness condition`() {
+        // The one-snapshot rule holds because this service renders readiness per scrape. A process
+        // gauge duplicating a readiness one would be a second number free to drift from the first.
+        val metrics = readiness().metrics()
+        val declared = metrics.lines().filter { it.startsWith("# TYPE ") }.map { it.split(' ')[2] }
+
+        assertEquals(declared.size, declared.distinct().size, "a series is declared twice: $declared")
+    }
+
+    @Test
     fun `every published series carries its HELP and TYPE`() {
         // A series without a TYPE is parsed as untyped, which silently costs rate() and increase().
         val body = readiness().metrics()

@@ -46,10 +46,15 @@ class MaxmindGeoLocator(
         val cityResponse = city.tryCity(address)
         val asnResponse = asn.tryAsn(address)
         return GeoInfo(
-            country = cityResponse.map { it.country?.name }.orElse(null),
-            city = cityResponse.map { it.city?.name }.orElse(null),
-            asn = asnResponse.map { it.autonomousSystemNumber }.orElse(null),
-            org = asnResponse.map { it.autonomousSystemOrganization }.orElse(null),
+            // Record accessors, not the bean getters. GeoIP2 5.x made these responses Java
+            // records and deprecated the getX() forms, which is what Kotlin's property syntax
+            // resolves to — `it.country` is `getCountry()`. Calling the accessor explicitly is
+            // the whole fix, and it keeps the build free of deprecation warnings that would
+            // otherwise have to be accepted in a baseline.
+            country = cityResponse.map { it.country()?.name() }.orElse(null),
+            city = cityResponse.map { it.city()?.name() }.orElse(null),
+            asn = asnResponse.map { it.autonomousSystemNumber() }.orElse(null),
+            org = asnResponse.map { it.autonomousSystemOrganization() }.orElse(null),
         )
     }
 

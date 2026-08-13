@@ -23,8 +23,9 @@ import java.util.concurrent.TimeUnit
  * A store failure (the ADB asleep or waking) maps to a 503 with a JSON error body; the
  * dashboard shows it and retries. `/healthz` proves the web process answers; `/readyz` proves the
  * database does too (the dashboard's one dependency), so a deploy that comes up before the ADB has
- * woken reads as not-ready rather than live. JDK [HttpServer] on a request pool capped at
- * [maxPoolThreads]; requests beyond the cap are refused at the connection rather than queued.
+ * woken reads as not-ready rather than live. `/metrics` renders the same [Readiness] snapshot as
+ * Prometheus text. JDK [HttpServer] on a request pool capped at [maxPoolThreads]; requests beyond
+ * the cap are refused at the connection rather than queued.
  */
 class AdminServer(
     private val store: VisitStore,
@@ -76,6 +77,7 @@ class AdminServer(
             when (exchange.requestURI.path) {
                 "/healthz" -> respond(exchange, 200, "text/plain", "ok")
                 "/readyz" -> ready(exchange)
+                "/metrics" -> metrics(exchange)
                 "/" -> redirect(exchange, "/admin")
                 "/admin" -> respond(exchange, 200, "text/html; charset=utf-8", assets.indexHtml)
                 "/admin/app.css" -> respond(exchange, 200, "text/css; charset=utf-8", assets.appCss)
@@ -100,6 +102,18 @@ class AdminServer(
             respond(exchange, if (ok) 200 else 503, "application/json", """{"ready":$ok,"database":{"ok":$ok}}""")
         } else {
             respond(exchange, if (probe.ready) 200 else 503, "application/json", probe.json)
+        }
+    }
+
+    // Same snapshot /readyz answers from, in the format a collector reads. 503 rather than an empty
+    // body when no Readiness is wired: a scrape that succeeds with nothing in it looks like a
+    // service with nothing to report, which is the one thing this endpoint must never imply.
+    private fun metrics(exchange: HttpExchange) {
+        val body = readiness?.metrics()
+        if (body == null) {
+            respond(exchange, 503, "text/plain", "metrics unavailable: no readiness wired")
+        } else {
+            respond(exchange, 200, PROMETHEUS_CONTENT_TYPE, body)
         }
     }
 
@@ -201,5 +215,9 @@ class AdminServer(
         private const val MAX_LIMIT = 500
         private const val ROLLUP_DAYS = 30
         private const val ROLLUP_TOP_N = 10
+
+        // The version parameter is part of the Prometheus exposition content type, not decoration:
+        // a collector reads it to decide which parser to use.
+        private const val PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
     }
 }

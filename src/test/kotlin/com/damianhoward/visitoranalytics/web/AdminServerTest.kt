@@ -216,7 +216,7 @@ class AdminServerTest {
     // limit that quietly stops working when someone swaps the queue. Saturation must refuse the
     // connection, not queue it: a queued request behind a slow database waits with no ceiling.
     // The JDK server has no status line to send once the executor rejects, so the client sees a
-    // connection-level failure — that is the documented contract, matching trading-system's.
+    // connection-level failure — that is the documented contract, matching position-ledger's.
     @Test
     fun `requests beyond the thread cap are refused rather than queued`() {
         val release = CountDownLatch(1)

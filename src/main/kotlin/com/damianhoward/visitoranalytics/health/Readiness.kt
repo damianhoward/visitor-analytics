@@ -203,7 +203,7 @@ class Readiness(
         /**
          * Thirty seconds against a one-second poll interval. Generous on purpose: the threshold
          * answers "has this stopped", and a loop that is thirty polls late has stopped by any
-         * useful definition. Matching trading-system's figure keeps one number to remember.
+         * useful definition. Matching position-ledger's figure keeps one number to remember.
          */
         private val MAX_POLL_AGE: Duration = Duration.ofSeconds(30)
     }

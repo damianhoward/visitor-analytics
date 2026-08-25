@@ -1,6 +1,6 @@
 /* Terminal-style dark UI, shared with the live sites: near-black canvas, warm-white ink, teal
    brand accent, one monospace family with tabular figures. Tokens copied from orderbook's
-   reference implementation -- see workspace-config/CLAUDE.md -> "Live demo look and feel". */
+   reference implementation, the shared token set every live demo draws from. */
 
 :root {
   --bg-base: #08090c;

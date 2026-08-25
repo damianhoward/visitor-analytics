@@ -226,9 +226,16 @@ class CaddyLogTailerTest {
             it.start(lines::add)
             append(log, "hello")
             awaitLines(1)
+            // Wait for the value the assertion reads, not for the key to appear. Every tailed path
+            // is in the snapshot from the first poll onwards, and the snapshot is republished after
+            // the cycle rather than as each line is emitted, so a delivered line is no guarantee the
+            // offset behind it has been published yet.
+            val whole = Files.size(log)
             val deadline = System.currentTimeMillis() + 5_000
-            while (it.offsets()[log.toString()] == null && System.currentTimeMillis() < deadline) Thread.sleep(5)
-            assertThat("the offset advanced past the line", (it.offsets()[log.toString()] ?: 0) >= 6)
+            while ((it.offsets()[log.toString()] ?: 0) < whole && System.currentTimeMillis() < deadline) {
+                Thread.sleep(5)
+            }
+            assertThat("the offset advanced past the line", (it.offsets()[log.toString()] ?: 0) >= whole)
         }
     }
 

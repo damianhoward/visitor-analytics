@@ -8,3 +8,8 @@
 # unit file with \r is bad enough; a script whose shebang reads `#!/usr/bin/env bash\r` does not
 # execute at all.
 * text=auto eol=lf
+
+# The exception Gradle's own generated attributes make: cmd.exe misreads a batch file's labels and
+# goto targets when its lines end in LF, so gradlew.bat keeps CRLF in every working copy.
+*.bat text eol=crlf
+*.jar binary

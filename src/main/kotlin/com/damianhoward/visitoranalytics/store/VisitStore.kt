@@ -23,6 +23,13 @@ interface VisitStore {
 
     fun recent(limit: Int): List<Visit>
 
+    /**
+     * Newest first, like [recent], but only visits from visitors who engaged at least once in what
+     * is still retained — every visit from such a visitor, engaged or not, so a session reads whole.
+     * A visitor is an IP hash; matching happens here so the hash never has to leave the store.
+     */
+    fun recentFromEngagedVisitors(limit: Int): List<Visit>
+
     fun visitsPerDay(days: Int): List<DayCount>
 
     fun topCountries(n: Int): List<LabelCount>

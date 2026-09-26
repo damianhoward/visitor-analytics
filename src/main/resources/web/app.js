@@ -2,6 +2,7 @@ const errorEl = document.getElementById("error");
 const ageEl = document.getElementById("age");
 const filterMeBtn = document.getElementById("filter-me");
 const filterNoiseBtn = document.getElementById("filter-noise");
+const filterEngagedBtn = document.getElementById("filter-engaged");
 
 let lastRefreshAt = 0;
 let lastVisits = [];
@@ -13,7 +14,12 @@ let lastVisits = [];
 const filterState = {
   me: localStorage.getItem("hideMe") === "1",
   noise: localStorage.getItem("hideNoise") === "1",
+  engaged: localStorage.getItem("engagedVisitors") === "1",
 };
+
+// The most rows the API will return. Enough history to scroll back through a day of traffic; the
+// table scrolls inside its panel, so the length costs the page nothing.
+const VISIT_LIMIT = 500;
 
 // Mirrors RequestFilter.SCAN_TOKENS on the ingest side deliberately: that filter stops new scan
 // hits from ever being stored, but doesn't retroactively clean up ones already recorded, and the
@@ -65,6 +71,7 @@ function renderVisits(visits) {
     const tr = document.createElement("tr");
     tr.append(
       cell(v.at.replace("T", " ").slice(0, 19)),
+      cell(`#${v.visitor}`, "dim"),
       cell(v.site.replace(".damianhoward.com", "")),
       truncCell(v.path),
       truncCell(
@@ -129,14 +136,24 @@ function renderRollups(r) {
     : "—";
 }
 
+// Toggling the engaged filter refetches while the 30s refresh may already be in flight, and
+// whichever answers last would win. Only the newest request is allowed to render.
+let latestRequest = 0;
+
 async function refresh() {
+  const request = ++latestRequest;
   try {
+    // "Engaged visitors" is answered by the server, because it needs the IP hash to tie a
+    // visitor's rows together and the hash never reaches the browser. The other two filters
+    // stay here and apply on top of whichever list comes back.
+    const scope = filterState.engaged ? "&visitors=engaged" : "";
     const [visitsRes, rollupsRes] = await Promise.all([
-      fetch("/admin/api/visits?limit=100"),
+      fetch(`/admin/api/visits?limit=${VISIT_LIMIT}${scope}`),
       fetch("/admin/api/rollups"),
     ]);
     const visits = await visitsRes.json();
     const rollups = await rollupsRes.json();
+    if (request !== latestRequest) return;
     if (!visitsRes.ok)
       throw new Error(visits.error || `HTTP ${visitsRes.status}`);
     if (!rollupsRes.ok)
@@ -148,6 +165,7 @@ async function refresh() {
     lastRefreshAt = Date.now();
     ageEl.textContent = "just now";
   } catch (e) {
+    if (request !== latestRequest) return;
     errorEl.textContent = e.message;
     errorEl.hidden = false;
   }
@@ -157,14 +175,24 @@ function toggleFilter(key, button, storageKey) {
   filterState[key] = !filterState[key];
   localStorage.setItem(storageKey, filterState[key] ? "1" : "0");
   button.setAttribute("aria-pressed", String(filterState[key]));
-  renderVisits(lastVisits);
 }
 
 filterMeBtn.setAttribute("aria-pressed", String(filterState.me));
 filterNoiseBtn.setAttribute("aria-pressed", String(filterState.noise));
-filterMeBtn.onclick = () => toggleFilter("me", filterMeBtn, "hideMe");
-filterNoiseBtn.onclick = () =>
+filterEngagedBtn.setAttribute("aria-pressed", String(filterState.engaged));
+filterMeBtn.onclick = () => {
+  toggleFilter("me", filterMeBtn, "hideMe");
+  renderVisits(lastVisits);
+};
+filterNoiseBtn.onclick = () => {
   toggleFilter("noise", filterNoiseBtn, "hideNoise");
+  renderVisits(lastVisits);
+};
+// A different list, not a different view of this one, so it refetches.
+filterEngagedBtn.onclick = () => {
+  toggleFilter("engaged", filterEngagedBtn, "engagedVisitors");
+  refresh();
+};
 
 setInterval(() => {
   if (!lastRefreshAt) return;

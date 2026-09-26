@@ -1,6 +1,7 @@
 package com.damianhoward.visitoranalytics.web
 
 import com.damianhoward.visitoranalytics.health.Readiness
+import com.damianhoward.visitoranalytics.model.Visit
 import com.damianhoward.visitoranalytics.store.LabelCount
 import com.damianhoward.visitoranalytics.store.VisitStore
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -82,7 +83,7 @@ class AdminServer(
                 "/admin" -> respond(exchange, 200, "text/html; charset=utf-8", assets.indexHtml)
                 "/admin/app.css" -> respond(exchange, 200, "text/css; charset=utf-8", assets.appCss)
                 "/admin/app.js" -> respond(exchange, 200, "text/javascript; charset=utf-8", assets.appJs)
-                "/admin/api/visits" -> respond(exchange, 200, "application/json", visitsJson(limit(exchange)))
+                "/admin/api/visits" -> respond(exchange, 200, "application/json", visitsJson(visits(exchange)))
                 "/admin/api/rollups" -> respond(exchange, 200, "application/json", rollupsJson())
                 else -> respond(exchange, 404, "text/plain", "not found")
             }
@@ -117,22 +118,43 @@ class AdminServer(
         }
     }
 
+    private fun param(
+        exchange: HttpExchange,
+        name: String,
+    ): String? =
+        (exchange.requestURI.rawQuery ?: "")
+            .split("&")
+            .firstOrNull { it.startsWith("$name=") }
+            ?.substringAfter("=")
+
     private fun limit(exchange: HttpExchange): Int {
-        val raw =
-            (exchange.requestURI.rawQuery ?: "")
-                .split("&")
-                .firstOrNull { it.startsWith("limit=") }
-                ?.substringAfter("=") ?: return DEFAULT_LIMIT
+        val raw = param(exchange, "limit") ?: return DEFAULT_LIMIT
         val limit = raw.toIntOrNull() ?: throw IllegalArgumentException("limit is not a number: '$raw'")
         require(limit in 1..MAX_LIMIT) { "limit out of range: $limit" }
         return limit
     }
 
-    private fun visitsJson(limit: Int): String {
+    // `visitors=engaged` narrows to visitors who engaged at some point, keeping all their visits.
+    // Any other value is refused rather than ignored, so a mistyped filter cannot quietly return
+    // the unfiltered list and read as "everyone engaged".
+    private fun visits(exchange: HttpExchange): List<Visit> {
+        val limit = limit(exchange)
+        return when (val visitors = param(exchange, "visitors")) {
+            null -> store.recent(limit)
+            "engaged" -> store.recentFromEngagedVisitors(limit)
+            else -> throw IllegalArgumentException("unknown visitors filter: '$visitors'")
+        }
+    }
+
+    private fun visitsJson(recent: List<Visit>): String {
         val visits = mapper.createArrayNode()
-        // The IP hash stays server-side: the dashboard has no use for it, so it isn't exposed.
-        for (visit in store.recent(limit)) {
+        // The IP hash stays server-side. What the dashboard gets instead is `visitor`, a number
+        // telling rows from the same client apart: assigned in order of first appearance in this
+        // response, so it says "these rows are one visitor" and nothing that survives the response.
+        val ordinals = mutableMapOf<String, Int>()
+        for (visit in recent) {
             val node = visits.addObject()
+            node.put("visitor", ordinals.getOrPut(visit.ipHash) { ordinals.size + 1 })
             node.put("site", visit.site)
             node.put("path", visit.path)
             node.put("engaged", visit.engaged)

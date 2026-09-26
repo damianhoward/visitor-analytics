@@ -29,6 +29,9 @@ enrich (GeoLite2 city + ASN, device class, salted IP hash) → Autonomous DB →
   Caddy access logs on the hosts do contain raw IPs, subject to each host's log rotation.
 - The reverse-DNS enrichment keeps the registrable domain only, never the full hostname, which
   can embed the address the hash exists to remove.
+- The hash never leaves the server. The dashboard tells visitors apart by a number assigned in
+  order of first appearance in each response, and its "engaged visitors" view — every visit from
+  anyone who engaged at least once — is matched on the hash inside the database.
 - Retention is 90 days; a pruner deletes older rows daily.
 - When the DB is unreachable (Always-Free ADB idles out after ~7 days), visits buffer to a local
   write-ahead file and flush on reconnect.

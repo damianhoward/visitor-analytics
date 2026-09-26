@@ -83,6 +83,35 @@ class OracleVisitStoreTest {
     }
 
     @Test
+    fun `engaged visitors keep every visit, and visitors who never engaged are dropped`() {
+        val engager = "e".repeat(64)
+        val browser = "b".repeat(64)
+        store.record(sampleVisit(path = "/landed", ipHash = engager, at = now.minusSeconds(3600L * 3)))
+        store.record(sampleVisit(path = "/looked", ipHash = browser, at = now.minusSeconds(3600L * 2)))
+        store.record(sampleVisit(path = "/traded", ipHash = engager, engaged = true, at = now.minusSeconds(3600L)))
+        store.record(sampleVisit(path = "/left", ipHash = engager, at = now))
+
+        val paths = store.recentFromEngagedVisitors(10).map { it.path }
+        assertThat(paths, equalTo(listOf("/left", "/traded", "/landed")))
+    }
+
+    @Test
+    fun `engaged visitors are newest first and bounded`() {
+        val engager = "e".repeat(64)
+        store.record(sampleVisit(path = "/traded", ipHash = engager, engaged = true, at = now.minusSeconds(3600L * 5)))
+        for (hour in 1..4) store.record(sampleVisit(path = "/h$hour", ipHash = engager, at = now.minusSeconds(3600L * hour)))
+
+        val paths = store.recentFromEngagedVisitors(3).map { it.path }
+        assertThat(paths, equalTo(listOf("/h1", "/h2", "/h3")))
+    }
+
+    @Test
+    fun `no engaged visitor means no visits`() {
+        store.record(sampleVisit(path = "/looked"))
+        assertThat(store.recentFromEngagedVisitors(10), equalTo(emptyList()))
+    }
+
+    @Test
     fun `visits per day groups and windows`() {
         store.record(sampleVisit(at = now.minusSeconds(3600), engaged = true))
         store.record(sampleVisit(at = now.minusSeconds(7200)))

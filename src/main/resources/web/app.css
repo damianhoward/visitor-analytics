@@ -119,7 +119,7 @@ a:hover {
   font-weight: 700;
 }
 
-/* The visits table is the widest element on the page (8 columns), so it gets the full content
+/* The visits table is the widest element on the page (9 columns), so it gets the full content
    width; the three rollup panels share a row beneath it. */
 .grid {
   flex: 1;
@@ -195,8 +195,24 @@ a:hover {
   letter-spacing: 0.02em;
 }
 
+/* The visits table holds up to 500 rows, so it scrolls inside its panel rather than running the
+   page on for thousands of pixels. Sized to the window less its panel heading, so once the page is
+   scrolled to the panel the whole table fits on screen; the floor keeps it usable on a short one. */
 .scroll {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: max(320px, calc(100vh - 90px));
+  scrollbar-color: var(--rule-bright) var(--bg-pin);
+  scrollbar-width: thin;
+}
+
+/* Column names stay put while the rows scroll. A sticky cell drops its collapsed border, so the
+   rule under the header is drawn as a shadow instead. */
+.scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-1);
+  box-shadow: inset 0 -1px 0 var(--rule);
 }
 
 table.data {

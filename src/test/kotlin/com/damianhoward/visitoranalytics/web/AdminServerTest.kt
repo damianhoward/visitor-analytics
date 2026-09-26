@@ -150,6 +150,41 @@ class AdminServerTest {
     }
 
     @Test
+    fun `visitors are numbered by first appearance, and the number is not the hash`() {
+        store.recorded.clear()
+        store.record(sampleVisit(path = "/b-first", ipHash = "b".repeat(64)))
+        store.record(sampleVisit(path = "/a", ipHash = "a".repeat(64)))
+        store.record(sampleVisit(path = "/b-again", ipHash = "b".repeat(64)))
+
+        val visits = mapper.readTree(get("/admin/api/visits?limit=10").body())
+        assertThat(
+            visits.map { it["path"].asText() to it["visitor"].asInt() },
+            equalTo(listOf("/b-again" to 1, "/a" to 2, "/b-first" to 1)),
+        )
+        assertThat(visits.toString(), not(containsString("bbbb")))
+    }
+
+    @Test
+    fun `the engaged-visitors filter returns whole visitors who engaged`() {
+        store.recorded.clear()
+        store.record(sampleVisit(path = "/landed", ipHash = "e".repeat(64)))
+        store.record(sampleVisit(path = "/looked", ipHash = "b".repeat(64)))
+        store.record(sampleVisit(path = "/traded", ipHash = "e".repeat(64), engaged = true))
+
+        val response = get("/admin/api/visits?limit=10&visitors=engaged")
+        assertThat(response.statusCode(), equalTo(200))
+        val paths = mapper.readTree(response.body()).map { it["path"].asText() }
+        assertThat(paths, equalTo(listOf("/traded", "/landed")))
+    }
+
+    @Test
+    fun `an unknown visitors filter is a 400, not the unfiltered list`() {
+        val response = get("/admin/api/visits?visitors=everyone")
+        assertThat(response.statusCode(), equalTo(400))
+        assertThat(response.body(), containsString("unknown visitors filter"))
+    }
+
+    @Test
     fun `rollups carry the dashboard's numbers`() {
         val response = get("/admin/api/rollups")
         assertThat(response.statusCode(), equalTo(200))

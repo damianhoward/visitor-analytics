@@ -58,6 +58,13 @@ class OracleVisitStore(
             }
         }
 
+    override fun recentFromEngagedVisitors(limit: Int): List<Visit> =
+        query(RECENT_FROM_ENGAGED_VISITORS, { it.setInt(1, limit) }) { rows ->
+            buildList {
+                while (rows.next()) add(rows.toVisit())
+            }
+        }
+
     override fun visitsPerDay(days: Int): List<DayCount> =
         query(PER_DAY, { it.setTimestamp(1, Timestamp.from(clock.instant().minusSeconds(days * DAY_SECONDS))) }) { rows ->
             buildList {
@@ -159,6 +166,13 @@ class OracleVisitStore(
         private const val RECENT =
             "SELECT site, path, engaged, country, city, asn, org, browser, os, device_kind, ip_hash, referrer, visited_at, org_domain " +
                 "FROM visits ORDER BY visited_at DESC FETCH FIRST ? ROWS ONLY"
+
+        // No index on ip_hash: the table holds 90 days of one person's portfolio traffic, and both
+        // scans are over that. Add one if the dashboard's query time says otherwise.
+        private const val RECENT_FROM_ENGAGED_VISITORS =
+            "SELECT site, path, engaged, country, city, asn, org, browser, os, device_kind, ip_hash, referrer, visited_at, org_domain " +
+                "FROM visits WHERE ip_hash IN (SELECT ip_hash FROM visits WHERE engaged = 1) " +
+                "ORDER BY visited_at DESC FETCH FIRST ? ROWS ONLY"
 
         // "day" would be the natural alias, but DAY is reserved in H2 (not Oracle).
         private const val PER_DAY =

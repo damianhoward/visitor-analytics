@@ -31,12 +31,15 @@ class OracleVisitStoreLiveTest {
                 )
             })
 
-        val smoke = sampleVisit(path = "/live-smoke", at = Instant.EPOCH)
+        // Engaged, under a hash no real client produces, so the engaged-visitors query is exercised
+        // in the real dialect and can only ever match this row.
+        val smoke = sampleVisit(path = "/live-smoke", engaged = true, at = Instant.EPOCH, ipHash = "0".repeat(64))
         store.record(smoke)
 
         val readBack = store.recent(500).filter { it.path == "/live-smoke" }
         assertThat(readBack.size, greaterThanOrEqualTo(1))
         assertThat(readBack.first().geo, equalTo(smoke.geo))
+        assertThat(store.recentFromEngagedVisitors(500).count { it.path == "/live-smoke" }, greaterThanOrEqualTo(1))
 
         assertThat(store.deleteOlderThan(Instant.EPOCH.plusSeconds(3600)), greaterThanOrEqualTo(1))
     }

@@ -67,6 +67,15 @@
           <span class="sub">newest first</span>
           <span class="filters">
             <button
+              id="filter-engaged"
+              type="button"
+              class="chip"
+              aria-pressed="false"
+              title="Every visit from anyone who engaged at least once"
+            >
+              Engaged visitors only
+            </button>
+            <button
               id="filter-me"
               type="button"
               class="chip"
@@ -89,6 +98,7 @@
             <thead>
               <tr>
                 <th>time</th>
+                <th>visitor</th>
                 <th>site</th>
                 <th>path</th>
                 <th>location</th>

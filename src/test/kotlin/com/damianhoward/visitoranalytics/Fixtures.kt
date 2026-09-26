@@ -19,13 +19,14 @@ fun sampleVisit(
     referrer: String? = "https://github.com/damianhoward",
     at: Instant = Instant.parse("2026-07-11T10:00:00Z"),
     orgDomain: String? = "bredband2.se",
+    ipHash: String = "ab".repeat(32),
 ) = Visit(
     site = site,
     path = path,
     engaged = engaged,
     geo = GeoInfo(country = country, city = city, asn = asn, org = org),
     device = Device(browser = "Chrome", os = "Windows", kind = Device.Kind.DESKTOP),
-    ipHash = "ab".repeat(32),
+    ipHash = ipHash,
     referrer = referrer,
     at = at,
     orgDomain = orgDomain,
@@ -60,6 +61,12 @@ open class FakeVisitStore : VisitStore {
     override fun recent(limit: Int): List<Visit> {
         failWith?.let { throw it }
         return recorded.takeLast(limit).reversed()
+    }
+
+    override fun recentFromEngagedVisitors(limit: Int): List<Visit> {
+        failWith?.let { throw it }
+        val engaged = recorded.filter { it.engaged }.map { it.ipHash }.toSet()
+        return recorded.filter { it.ipHash in engaged }.takeLast(limit).reversed()
     }
 
     override fun visitsPerDay(days: Int): List<DayCount> {

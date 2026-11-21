@@ -72,7 +72,8 @@ class DashboardBrowserTest {
     private fun rows(page: Page) = page.locator("#visits tbody tr")
 
     // The second column is the visitor number, "#n".
-    private fun visitorNumbers(page: Page): Set<String> = rows(page).all().map { it.locator("td").nth(1).textContent() }.toSet()
+    private fun visitorNumbers(page: Page): Set<String> =
+        rows(page).all().map { checkNotNull(it.locator("td").nth(1).textContent()) }.toSet()
 
     @Test
     fun `lists every visit, numbering visitors from the newest`() {
@@ -120,13 +121,8 @@ class DashboardBrowserTest {
         MatcherAssert.assertThat(scrollable.toDouble(), greaterThan(0.0))
 
         box.evaluate("el => { el.scrollTop = 1000 }")
-        val boxTop = box.boundingBox().y
-        val headerTop =
-            page
-                .locator("#visits thead th")
-                .first()
-                .boundingBox()
-                .y
+        val boxTop = checkNotNull(box.boundingBox()).y
+        val headerTop = checkNotNull(page.locator("#visits thead th").first().boundingBox()).y
         MatcherAssert.assertThat(headerTop, closeTo(boxTop, 1.0))
     }
 }
